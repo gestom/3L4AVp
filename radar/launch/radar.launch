@@ -1,0 +1,13 @@
+<launch>
+
+<arg name="bag"/>
+<param name="use_sim_time" value="true"/>
+<node pkg="rosbag" type="play" name="rosbag_play" args="--clock --pause $(arg bag)"/>
+
+<!-- action and reconfigure clients to control the system -->
+<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="Reconfigurator"/>
+
+
+<node pkg="radar" type="radarology" name="radarology" output="screen"/>
+
+</launch>
