@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(radar)
-set ( CMAKE_CXX_FLAGS "-ggdb")
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
+set ( cmake_cxx_flags "-ggdb")
+## find catkin macros and libraries
+## if components list like find_package(catkin required components xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -10,15 +10,16 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   pcl_ros
   pcl_conversions
+  visualization_msgs
   geometry_msgs
   message_generation
   dynamic_reconfigure
   rosbag
 )
 find_package(PCL REQUIRED)
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
-## Uncomment this if the package has a setup.py. This macro ensures
+## system dependencies are found with cmake's conventions
+# find_package(boost required components system)
+## uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 # catkin_python_setup()
@@ -117,13 +118,16 @@ include_directories(
 
 ## Declare a C++ executable
 add_executable(radarology src/radarology.cpp)
+add_executable(legFilter src/legFilter.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(radarology ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
+add_dependencies(legFilter ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(radarology ${catkin_LIBRARIES} )
+target_link_libraries(legFilter ${catkin_LIBRARIES} )
 
 #############
 ## Install ##

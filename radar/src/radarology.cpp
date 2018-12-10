@@ -11,7 +11,7 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/common/common.h>
 #include <pcl/common/centroid.h>
-
+#include <vector>
 using namespace std;
 float radius=0.5;
 ros::Subscriber radar_sub_;
@@ -25,16 +25,47 @@ void callback(radar::radiusConfig &config, uint32_t level) {
 }
 
 void radarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+	//Convert msg to pcl
+	cout << "New pcl received" << endl;
+	pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZI>);
+	pcl::fromROSMsg(*msg, *pcl_pc);
 
-	pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_pc_in(new pcl::PointCloud<pcl::PointXYZI>);
-	pcl::fromROSMsg(*msg, *pcl_pc_in);
+	//Set up pcl
+	pcl::IndicesPtr pc_indices(new std::vector<int>);
+	pcl::PassThrough<pcl::PointXYZI> pt;
+	pt.setInputCloud(pcl_pc);
+	pt.filter(*pc_indices);
+	vector<int> neighbourArray;		
+	neighbourArray.clear();	
 
-	cout << "Radar pointcloud received" << endl;
-	
+	/* Find neighbours for poincloud points */
+	for (int i=0;i< pc_indices->size();i++){
+		int neighbourSize=0;
+		for(int j=0;j<pc_indices->size();j++){
+			//Compute the r2 for sphere two points
+			float r2 = (pcl_pc->points[(*pc_indices)[i]].x - pcl_pc->points[(*pc_indices)[j]].x) * (pcl_pc->points[(*pc_indices)[i]].x - pcl_pc->points[(*pc_indices)[j]].x) + 
+				(	pcl_pc->points[(*pc_indices)[i]].y - pcl_pc->points[(*pc_indices)[j]].y) * (pcl_pc->points[(*pc_indices)[i]].y - pcl_pc->points[(*pc_indices)[j]].y) + 
+				(pcl_pc->points[(*pc_indices)[i]].z - pcl_pc->points[(*pc_indices)[j]].z) * (pcl_pc->points[(*pc_indices)[i]].z - pcl_pc->points[(*pc_indices)[j]].z); 
+
+
+			//Point lies within defined radius
+			if(r2<(radius*radius)){
+				neighbourSize++;	
+			}	
+		}
+		neighbourArray.push_back(neighbourSize);
+	}
+
+	//Print results
+	cout << "Number of neigbours of points are "; 
+	for (int i=0;i<pc_indices->size();i++){
+		cout <<  neighbourArray[i] << " ";
+	}
+	cout << endl;
+
 }
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg){
-	
-	cout << "Legs detecting in process" << endl;
+
 }
 
 
