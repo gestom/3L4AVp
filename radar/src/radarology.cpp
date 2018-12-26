@@ -12,16 +12,24 @@
 #include <pcl/common/common.h>
 #include <pcl/common/centroid.h>
 #include <vector>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+
 using namespace std;
 float radius=0.5;
+int minClusterSize = 10;
 ros::Subscriber radar_sub_;
 ros::Subscriber laser_sub_;
+ros::Publisher point_pub_;
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+PointCloud::Ptr pcl_msg (new PointCloud);
 
 void callback(radar::radiusConfig &config, uint32_t level) {
 	
 	ROS_INFO("Reconfigure Request of radius: %f", 
 			config.radius);
 	radius=config.radius;
+	minClusterSize=config.minClusterSize;
 }
 
 void radarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
@@ -38,15 +46,23 @@ void radarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
 	vector<int> neighbourArray;		
 	neighbourArray.clear();	
 
+	pcl_msg->header.frame_id = "laser";
+	pcl_msg->height = 1;
+	pcl_msg->width = 0;
+	pcl_msg->points.clear();
+
 	/* Find neighbours for poincloud points */
 	for (int i=0;i< pc_indices->size();i++){
 		int neighbourSize=0;
+		float xi = pcl_pc->points[(*pc_indices)[i]].x;
+		float yi = pcl_pc->points[(*pc_indices)[i]].y;
+		float zi = pcl_pc->points[(*pc_indices)[i]].z;
 		for(int j=0;j<pc_indices->size();j++){
 			//Compute the r2 for sphere two points
-			float r2 = (pcl_pc->points[(*pc_indices)[i]].x - pcl_pc->points[(*pc_indices)[j]].x) * (pcl_pc->points[(*pc_indices)[i]].x - pcl_pc->points[(*pc_indices)[j]].x) + 
-				(	pcl_pc->points[(*pc_indices)[i]].y - pcl_pc->points[(*pc_indices)[j]].y) * (pcl_pc->points[(*pc_indices)[i]].y - pcl_pc->points[(*pc_indices)[j]].y) + 
-				(pcl_pc->points[(*pc_indices)[i]].z - pcl_pc->points[(*pc_indices)[j]].z) * (pcl_pc->points[(*pc_indices)[i]].z - pcl_pc->points[(*pc_indices)[j]].z); 
-
+			float xj = pcl_pc->points[(*pc_indices)[j]].x;
+			float yj = pcl_pc->points[(*pc_indices)[j]].y;
+			float zj = pcl_pc->points[(*pc_indices)[j]].z;
+			float r2 = (xi-xj)*(xi-xj)+(yi-yj)*(yi-yj)+(zi-zj)*(zi-zj)*0;
 
 			//Point lies within defined radius
 			if(r2<(radius*radius)){
@@ -54,7 +70,13 @@ void radarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
 			}	
 		}
 		neighbourArray.push_back(neighbourSize);
+		if (neighbourSize > minClusterSize){ 
+			printf("PUBLISHED %f %f %f\n",xi,yi,zi);
+			pcl_msg->points.push_back (pcl::PointXYZ(xi,yi,zi));
+			pcl_msg->width++;
+		}
 	}
+	point_pub_.publish (pcl_msg);
 
 	//Print results
 	cout << "Number of neigbours of points are "; 
@@ -80,6 +102,7 @@ int main(int argc, char **argv) {
 
   radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/radar/RScan", 1, radarCallback);
   laser_sub_ = nh_.subscribe<sensor_msgs::LaserScan>("/scan", 1, laserCallback);
+  point_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/points2", 100000);
 
   ros::spin();
   return 0;
