@@ -14,6 +14,7 @@
 #include <vector>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
+#include <people_msgs/PositionMeasurementArray.h>
 
 using namespace std;
 float radius=0.5;
@@ -21,8 +22,10 @@ int minClusterSize = 10;
 ros::Subscriber radar_sub_;
 ros::Subscriber laser_sub_;
 ros::Publisher point_pub_;
+ros::Subscriber tracker_sub_;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 PointCloud::Ptr pcl_msg (new PointCloud);
+float personX,personY;
 
 void callback(radar::radiusConfig &config, uint32_t level) {
 	
@@ -32,7 +35,8 @@ void callback(radar::radiusConfig &config, uint32_t level) {
 	minClusterSize=config.minClusterSize;
 }
 
-void radarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+void backupRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
+{
 	//Convert msg to pcl
 	cout << "New pcl received" << endl;
 	pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZI>);
@@ -71,7 +75,7 @@ void radarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
 		}
 		neighbourArray.push_back(neighbourSize);
 		if (neighbourSize > minClusterSize){ 
-			printf("PUBLISHED %f %f %f\n",xi,yi,zi);
+//			printf("PUBLISHED %f %f %f\n",xi,yi,zi);
 			pcl_msg->points.push_back (pcl::PointXYZ(xi,yi,zi));
 			pcl_msg->width++;
 		}
@@ -86,10 +90,71 @@ void radarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
 	cout << endl;
 
 }
+
+void radarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
+{
+	//Convert msg to pcl
+	cout << "New pcl received" << endl;
+	pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZI>);
+	pcl::fromROSMsg(*msg, *pcl_pc);
+
+	//Set up pcl
+	pcl::IndicesPtr pc_indices(new std::vector<int>);
+	pcl::PassThrough<pcl::PointXYZI> pt;
+	pt.setInputCloud(pcl_pc);
+	pt.filter(*pc_indices);
+	vector<int> neighbourArray;		
+	neighbourArray.clear();	
+
+	pcl_msg->header.frame_id = "laser";
+	pcl_msg->height = 1;
+	pcl_msg->width = 0;
+	pcl_msg->points.clear();
+
+	/* Find neighbours for poincloud points */
+	int neighbourSize=0;
+	float xi = personX;
+	float yi = personY;
+	float zi = 0;
+	for(int j=0;j<pc_indices->size();j++){
+		//Compute the r2 for sphere two points
+		float xj = pcl_pc->points[(*pc_indices)[j]].x;
+		float yj = pcl_pc->points[(*pc_indices)[j]].y;
+		float zj = pcl_pc->points[(*pc_indices)[j]].z;
+		float r2 = (xi-xj)*(xi-xj)+(yi-yj)*(yi-yj)+(zi-zj)*(zi-zj)*0;
+
+		//Point lies within defined radius
+		if(r2<(radius*radius)){
+			pcl_msg->points.push_back (pcl::PointXYZ(xj,yj,zj));
+			pcl_msg->width++;
+		}
+	}
+	point_pub_.publish (pcl_msg);
+
+	//Print results
+	cout << "Number of neigbours of points are "; 
+	/*for (int i=0;i<pc_indices->size();i++){
+		cout <<  neighbourArray[i] << " ";
+	}*/
+	cout << endl;
+
+}
+
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
 }
 
+void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
+{
+	printf("People: %i: ",(int)msg->people.size());
+	for (int i = 0;i<msg->people.size();i++)
+	{
+		printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
+		personX = msg->people[0].pos.x;
+		personY = msg->people[0].pos.y;
+	}
+	printf("\n");
+}
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "radarology");
@@ -102,6 +167,7 @@ int main(int argc, char **argv) {
 
   radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/radar/RScan", 1, radarCallback);
   laser_sub_ = nh_.subscribe<sensor_msgs::LaserScan>("/scan", 1, laserCallback);
+  tracker_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1, trackerCallback);
   point_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/points2", 100000);
 
   ros::spin();
