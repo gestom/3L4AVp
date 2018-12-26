@@ -14,7 +14,7 @@
     <param name="fixed_frame" type="string" value="laser"/>
     </node>
 
-<node pkg="radar" type="radarology" name="radarology" output="screen"/>
+<node pkg="radar" type="radarology" name="radarology" output="screen" />
 <node pkg="radar" type="legFilter" name="legFilter" output="screen"/>
 
   <!-- Static transform from map to base_radar_link for visualization of stand-alone mmWave sensor using Rviz -->
