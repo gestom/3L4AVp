@@ -723,6 +723,7 @@ void Object3dDetector::classify() {
     pose_array_pub_.publish(pose_array);
     //std::cerr << "[object3d_detector_ol] published " << pose_array.poses.size() << " poses *** ";
   }
+
   if(marker_array.markers.size()) {
     marker_array_pub_.publish(marker_array);
   }

@@ -154,7 +154,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		pcl_msg->height = 1;
 		pcl_msg->width = 0;
 		pcl_msg->points.clear();
-		for (int j = 0; j <((*clusters)[i]).indices.size(); ++j){
+		for (int j = 0; j <(int)((*clusters)[i]).indices.size(); ++j){
 			pcl_msg->points.push_back (pcl_pc->points[(*clusters)[i].indices[j]]);
 			pcl_msg->width++;
 		}

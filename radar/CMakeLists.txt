@@ -121,17 +121,20 @@ include_directories(
 add_executable(radarology src/radarology.cpp)
 add_executable(legFilter src/legFilter.cpp)
 add_executable(radar_detector_ol src/radar_detector_ol.cpp src/svm.cpp)
+add_executable(evaluator src/evaluator.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(radarology ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 add_dependencies(legFilter ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 add_dependencies(radar_detector_ol ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
+add_dependencies(evaluator ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(radarology ${catkin_LIBRARIES} )
 target_link_libraries(legFilter ${catkin_LIBRARIES} )
 target_link_libraries(radar_detector_ol ${catkin_LIBRARIES} )
+target_link_libraries(evaluator ${catkin_LIBRARIES} )
 
 #############
 ## Install ##
