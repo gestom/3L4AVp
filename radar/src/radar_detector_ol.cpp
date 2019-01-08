@@ -633,7 +633,7 @@ void Object3dDetector::classify() {
       if(svm_check_probability_model(svm_model_)) {
 	double prob_estimates[svm_model_->nr_class];
 	svm_predict_probability(svm_model_, svm_node_, prob_estimates);
-	clusters_probability_.push_back(prob_estimates[0]);
+	clusters_probability_.push_back(prob_estimates[0]);		//TODO change here, multi-class classiifier
 	if(prob_estimates[0] > human_probability_)
 	  svm_find_human = true;
       } else {

@@ -14,7 +14,6 @@
     <param name="fixed_frame" type="string" value="laser"/>
     </node>
     
-    
     <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" output="screen" respawn="false">
       <param name="print_fps" type="bool" value="false"/>
       <param name="max_trains" type="int" value="5"/>
