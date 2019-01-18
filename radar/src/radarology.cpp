@@ -28,7 +28,7 @@ ros::Publisher point_positive_pub_;
 ros::Publisher point_negative_pub_;
 ros::Publisher  marker_array_pub_;
 ros::Subscriber tracker_sub_;
-typedef pcl::PointXYZI PointTypeFull;
+typedef pcl::PointXYZHSV PointTypeFull;
 typedef pcl::PointCloud<PointTypeFull> PointCloud;
 float personX,personY;
 PointCloud::Ptr pcl_msg (new PointCloud);
@@ -96,17 +96,18 @@ void addBoundingBoxMarker(visualization_msgs::MarkerArray::Ptr markerArray,float
 void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 {
 	//Convert msg to pcl
+	//Radar returns intensity,range and velocity (m/s), so we use pcl point with 3 floats apart of coordinates
 	cout << "New pcl received" << endl;
-	pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZI>);
+	pcl::PointCloud<pcl::PointXYZHSV>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZHSV>);
 	pcl::fromROSMsg(*msg, *pcl_pc);
 	pcl::PointCloud<PointTypeFull>::Ptr cloud_with_normals (new pcl::PointCloud<PointTypeFull>);
 	pcl::IndicesClustersPtr clusters (new pcl::IndicesClusters);
 	pcl::PointCloud<PointTypeFull>::Ptr	cloud_out (new pcl::PointCloud<PointTypeFull>);
 	visualization_msgs::MarkerArray::Ptr markerArray(new visualization_msgs::MarkerArray);
-
+	
 	//Set up pcl
 	pcl::IndicesPtr pc_indices(new std::vector<int>);
-	pcl::PassThrough<pcl::PointXYZI> pt;
+	pcl::PassThrough<pcl::PointXYZHSV> pt;
 	pt.setInputCloud(pcl_pc);
 	pt.filter(*pc_indices);
 
@@ -120,16 +121,18 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	//cec.setMaxClusterSize (cloud_with_normals->points.size () / 5);
 	cec.segment (*clusters);
 	//std::cerr << ">> Done: " << tt.toc () << " ms\n";
-	printf("Clusters: %i: ",clusters->size());
+	printf("Clusters size: %i: ",clusters->size());
 	
 	int positives = 0;
 	for (int i = 0; i < clusters->size (); ++i)
 	{
-		printf("%i ",((*clusters)[i]).indices.size());
+		printf("\n Cluster size %i ",((*clusters)[i]).indices.size());
+		cout << endl;
 		float meanX=0;
 		float meanY=0;
 		float tX,tY,tZ;
 		float minX,minY,minZ,maxX,maxY,maxZ;
+		float meanV = 0;
 		minX=minY=minZ=+100000;
 		maxX=maxY=maxZ=-100000;
 		for (int j = 0; j <((*clusters)[i]).indices.size(); ++j){
@@ -143,11 +146,13 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 			minZ = fmin(tZ,minZ);	
 			maxX = fmax(tX,maxX);	
 			maxY = fmax(tY,maxY);	
-			maxZ = fmax(tZ,maxZ);	
+			maxZ = fmax(tZ,maxZ);
+			meanV += pcl_pc->points[((*clusters)[i]).indices[j]].v; 
 		}
+		meanV = meanV/((*clusters)[i]).indices.size();
 		meanX = meanX/((*clusters)[i]).indices.size();
 		meanY = meanY/((*clusters)[i]).indices.size();
-		printf("%f, ",sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)));
+		printf("\n %f, Mean Velocity  %f ",sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)),meanV);
 
 		float intensity = 0.1;
 		pcl_msg->header.frame_id = "laser";
@@ -162,7 +167,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		{
 			point_negative_pub_.publish (pcl_msg);
 		} else {
-			printf("Offset: %f %f %f %f\n",meanX,meanY,personX,personY);
+		/	printf("Offset: %f %f %f %f\n",meanX,meanY,personX,personY);
 			point_positive_pub_.publish (pcl_msg);
 			positives++;
 			addBoundingBoxMarker(markerArray,minX,maxX,minY,maxY,minZ,maxZ);
