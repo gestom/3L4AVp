@@ -1,0 +1,30 @@
+<launch>
+  
+  <!-- rosbag play -->
+  <arg name="bag"/>
+  <param name="use_sim_time" value="true"/>
+  <node pkg="rosbag" type="play" name="rosbag_play" args="-r 0.5 --clock $(arg bag)" required="true"/>
+  
+  <node pkg="velodyne_pointcloud" type="cloud_node" name="cloud_node">
+    <param name="calibration" value="$(env PWD)/32db.yaml"/>
+    <param name="min_range" value="0.4"/>
+    <param name="max_range" value="130.0"/>
+  </node>
+  
+  <node pkg="adaptive_clustering" name="adaptive_clustering" type="adaptive_clustering">
+    <param name="print_fps" value="true"/>
+    <param name="z_axis_min" value="-1.3"/>
+    <param name="z_axis_max" value="1.2"/>
+  </node>
+  
+  <!-- bayesian Tracking -->
+  <rosparam command="load" file="$(env PWD)/velodyne_detector.yaml"/>
+  <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker" respawn="true">
+    <param name="base_link" type="string" value="velodyne"/>
+    <param name="target_frame" type="string" value="map"/>
+  </node>
+
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_velodyne" args="0 0 0 0 0 0 map velodyne 100"/>
+  
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(env PWD)/velodyne_lifelong.rviz"/>
+</launch>
