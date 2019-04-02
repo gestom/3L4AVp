@@ -13,6 +13,7 @@
   </include>
 
   <!-- Static transform from map to base_radar_link for visualization of stand-alone mmWave sensor using Rviz -->
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_laser" args="0 0 0 0 0 0 map laser 100"/>
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args="0 0 0 0 0 0 map base_radar_link 100"/>
 
   <!-- Launch Rviz with pre-defined configuration to view mmWave sensor detected object data (color by elevation) -->

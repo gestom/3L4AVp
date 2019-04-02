@@ -2,7 +2,7 @@
   
   <arg name="bag"/>
   <param name="use_sim_time" value="true"/>
-  <node pkg="rosbag" type="play" name="rosbag_play" args="--clock -r 1.0 -l $(arg bag)"/>
+  <node pkg="rosbag" type="play" name="rosbag_play" args="--clock -r 1.0  $(arg bag)"/>
   
   <!-- action and reconfigure clients to control the system
        <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="Reconfigurator"/>
@@ -15,26 +15,26 @@
     <param name="fixed_frame" type="string" value="laser"/>
   </node>
   
-  <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" output="screen" respawn="false">
+  <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" output="log" respawn="false">
     <param name="print_fps" type="bool" value="false"/>
     <param name="max_trains" type="int" value="4"/>
     <param name="round_positives" type="int" value="10"/>
     <param name="round_negatives" type="int" value="10"/>
+    <param name="find_the_best_training_parameters" type="bool" value="true"/>
   </node>
   
-  <!--
-      <node pkg="radar" type="evaluator" name="evaluator" output="screen" respawn="false">
+      <node pkg="radar" type="evaluator" name="evaluator" output="log" respawn="false">
       <remap from="/detector" to="/radar_detector_ol/markers"/>
       <remap from="/ground" to="/person"/>
       </node>
-  -->
-  
   <node pkg="radar" type="radarology" name="radarology" output="log"/>
   <node pkg="radar" type="legFilter" name="legFilter" output="screen"/>
-  
+  <!-- node pkg="camera_pcl" type="camera_pcl" name="camera_pcl" output="log"/ -->
+	 
   <!-- Static transform from map to base_radar_link for visualization of stand-alone mmWave sensor using Rviz -->
-  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args="0 0 0 0 0 0 map base_radar_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args="0.08 0.13 0 0 0 0 map base_radar_link 100"/>
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_laser" args="0 0 0 0 0 0 map laser 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_camera_depth_optical_frame" args="0.08 -0.08 0.32 -1.57 0 -1.57  map camera_depth_optical_frame 100"/>
   
   <!-- Launch Rviz with pre-defined configuration to view mmWave sensor detected object data (color by elevation) -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find radar)/launch/radar_all.rviz"/> 

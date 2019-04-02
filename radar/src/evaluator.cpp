@@ -1,10 +1,39 @@
 #include <ros/ros.h>
 #include <stdio.h>
+#include <image_transport/image_transport.h>
+#include <sensor_msgs/image_encodings.h>
+#include <boost/thread.hpp>
+#include <depth_image_proc/depth_conversions.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
+#include <limits>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/opencv.hpp>
 #include <visualization_msgs/MarkerArray.h>
+#include <geometry_msgs/PoseArray.h>
+#include <people_msgs/PositionMeasurementArray.h>
 
+using namespace cv;
 using namespace std;
 ros::Subscriber groundTruthSub;
 ros::Subscriber detectorSub;
+boost::shared_ptr<image_transport::ImageTransport> it_;
+image_transport::Subscriber sub_depth_;
+image_transport::Publisher depth_pub_;
+ros::Publisher info_pub_;
+ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_;
+float fy,fx,cx,cy;
+float personRadx;
+float personRady;
+float personCamx;
+float personCamy;
+float personLegx;
+float personLegy;
+int numofDetection;
+float totalDistR;
+float totalDistL;
+ros::Time timestampS;
+int numOfCycles=0;
 
 typedef struct
 {
@@ -49,7 +78,7 @@ SBox formBox(visualization_msgs::Marker marker)
 		result.maxY = fmax(marker.points[i].y,result.maxY);
 		result.maxZ = fmax(marker.points[i].z,result.maxZ);
 	}
-	printf("%.3f %.3f %.3f %.3f %.3f %.3f\n",result.minX,result.maxX,result.minY,result.maxY,result.minZ,result.maxZ);
+	//printf("%.3f %.3f %.3f %.3f %.3f %.3f\n",result.minX,result.maxX,result.minY,result.maxY,result.minZ,result.maxZ);
 	result.timestampSecs = marker.header.stamp.sec;
 	result.timestampNsecs = marker.header.stamp.nsec;
 	return result;
@@ -103,7 +132,7 @@ void checkQueues()
 {
 	vector<int> removeGT;
 	vector<int> removeDet;
-	printf("Queues: %d %d\n",groundTruth.size(),detection.size());
+	//printf("Queues: %d %d\n",groundTruth.size(),detection.size());
 	int i = 0; 
 	int j = 0; 
 
@@ -117,7 +146,7 @@ void checkQueues()
 				SBox a = groundTruth[i];
 				SBox b = detection[j];
 				SBox c = boxOverlap(a,b);
-				printf("Overlap: %.3f\n",boxVolume(c)/(boxVolume(a)+boxVolume(b)-boxVolume(c)));
+	//			printf("Overlap: %.3f\n",boxVolume(c)/(boxVolume(a)+boxVolume(b)-boxVolume(c)));
 				groundTruth.erase(groundTruth.begin()+i);
 				detection.erase(detection.begin()+j);
 				i--;
@@ -141,15 +170,115 @@ void detectorCb(const visualization_msgs::MarkerArray::ConstPtr& msg)
 	checkQueues();
 }
 
+void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
+{  
+	numOfCycles++; 
+	cv_bridge::CvImagePtr cv_ptr;
+	try     
+	{       
+		cv_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1 );
+	}
+	catch (cv_bridge::Exception& e)
+	{       
+		ROS_ERROR("cv_bridge exception: %s", e.what());
+		return;
+	}
+	numofDetection++;
+	float z = 0;
+	float y = 0;
+	float x = 0;
+	int numPoints=0;
+
+	for(int i=0;i<depth_msg->width;i++){
+		for(int j=0;j<depth_msg->height;j++){
+			if(j > 350||j < 20 || i < 10 || i > 570)  cv_ptr->image.at<float>(j,i) = 0; 
+			if((cv_ptr->image.at<float>(j,i) > 700) &&  (cv_ptr->image.at<float>(j,i) < 3100)){
+
+				z +=  cv_ptr->image.at<float>(j,i)*0.001;        
+				x +=  (cv_ptr->image.at<float>(j,i)*0.001) * ((i - 312.463) * (1/628.008));
+				y +=  (cv_ptr->image.at<float>(j,i)*0.001) * ((j - 242.325) * (1/628.008));
+				numPoints++;
+			} else{ 
+				cv_ptr->image.at<float>(j,i) = 0;
+			}
+		}
+	}
+
+	if ( !isinf(x) && !isinf(y) && !isinf(z) )
+	{
+		z = z/numPoints;  
+		y = y/numPoints;  
+		x = x/numPoints; 
+		personCamx=z;
+		personCamy=-x; 
+
+		cout<< " Cam " << personCamx << " " << personCamy << endl;
+		cout<< " Rad " << personRadx << " " << personRady << endl; 
+		cout<< " Leg " << personLegx << " " << personLegy << endl; 
+		//Computing distances
+		float distRC=0;
+		float distCL=0;
+		distRC=sqrt(pow((personCamx-personRadx),2)+pow((personCamy-personRady),2));
+		distCL=sqrt(pow((personCamx-personLegx),2)+pow((personCamy-personLegy),2));
+
+		if(!isnan(distRC)|| !isnan(distCL)){
+			totalDistR+=distRC;
+			totalDistL+=distCL;
+			cout << "Radar current " << distRC << " Average distance " << totalDistR/numofDetection << " Detections " << numofDetection << endl;
+			cout << "Laser current " << distCL << " Average distance " << totalDistL/numofDetection << " Detections " << numofDetection << endl;
+				//cout << "Dist radar " << distRC << endl;
+				//cout << "Dist Hokuyo " << distCL << endl;
+		}
+
+	}
+	depth_pub_.publish(cv_ptr->toImageMsg());
+}
+
+void infoCallback(const sensor_msgs::CameraInfoPtr& msg){
+
+
+        cx = msg->P[2];
+        cy = msg->P[6];
+        fx = msg->P[0];
+        fy = msg->P[5];
+	info_pub_.publish(msg);
+}
+
+void radarPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg){
+
+	personRadx=msg->poses[0].position.x;
+	personRady=msg->poses[0].position.y;
+	
+}
+
+void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
+
+	
+ 	for(int i = 0;i<msg->people.size();i++)
+        {
+	personLegx=msg->people[0].pos.x;
+ 	personLegy=msg->people[0].pos.y;
+	}
+	
+}
 
 int main(int argc, char **argv) 
 {
-  ros::init(argc, argv, "evaluator");
-  ros::NodeHandle nh_;
-  groundTruthSub = nh_.subscribe<visualization_msgs::MarkerArray>("/ground", 1, groundTruthCb);
-  detectorSub = nh_.subscribe<visualization_msgs::MarkerArray>("/detector", 1, detectorCb);
+	ros::init(argc, argv, "evaluator");
+	ros::NodeHandle nh_;
+	groundTruthSub = nh_.subscribe<visualization_msgs::MarkerArray>("/ground", 1, groundTruthCb);
+	detectorSub = nh_.subscribe<visualization_msgs::MarkerArray>("/detector", 1, detectorCb);
 
-  ros::spin();
-  return 0;
+	image_transport::ImageTransport it_(nh_);
+	depth_pub_  = it_.advertise("/person/depth/image_rect_raw", 1);
+	sub_depth_ = it_.subscribe("/camera/depth/image_rect_raw", 1, imageCallback);
+	info_sub_ = nh_.subscribe("/camera/depth/camera_info",1,infoCallback);
+	info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/person/depth/camera_info",1);
+	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/radar_detector_ol/poses",1,radarPoseCallback);
+	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
+
+
+	ros::spin();
+	return 0;
 }
 

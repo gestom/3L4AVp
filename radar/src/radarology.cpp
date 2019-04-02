@@ -97,7 +97,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 {
 	//Convert msg to pcl
 	//Radar returns intensity,range and velocity (m/s), so we use pcl point with 3 floats apart of coordinates
-	cout << "New pcl received" << endl;
+	//cout << "New pcl received" << endl;
 	pcl::PointCloud<pcl::PointXYZHSV>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZHSV>);
 	pcl::fromROSMsg(*msg, *pcl_pc);
 	pcl::PointCloud<PointTypeFull>::Ptr cloud_with_normals (new pcl::PointCloud<PointTypeFull>);
@@ -121,13 +121,13 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	//cec.setMaxClusterSize (cloud_with_normals->points.size () / 5);
 	cec.segment (*clusters);
 	//std::cerr << ">> Done: " << tt.toc () << " ms\n";
-	printf("Clusters size: %i: ",clusters->size());
+	//printf("Clusters size: %i: ",clusters->size());
 	
 	int positives = 0;
 	for (int i = 0; i < clusters->size (); ++i)
 	{
-		printf("\n Cluster size %i ",((*clusters)[i]).indices.size());
-		cout << endl;
+		//printf("\n Cluster size %i ",((*clusters)[i]).indices.size());
+		//cout << endl;
 		float meanX=0;
 		float meanY=0;
 		float tX,tY,tZ;
@@ -152,7 +152,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		meanV = meanV/((*clusters)[i]).indices.size();
 		meanX = meanX/((*clusters)[i]).indices.size();
 		meanY = meanY/((*clusters)[i]).indices.size();
-		printf("\n %f, Mean Velocity  %f ",sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)),meanV);
+		//printf("\n %f, Mean Velocity  %f ",sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)),meanV);
 
 		float intensity = 0.1;
 		pcl_msg->header.frame_id = "laser";
@@ -167,7 +167,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		{
 			point_negative_pub_.publish (pcl_msg);
 		} else {
-		/	printf("Offset: %f %f %f %f\n",meanX,meanY,personX,personY);
+			printf("Offset: %f %f %f %f\n",meanX,meanY,personX,personY);
 			point_positive_pub_.publish (pcl_msg);
 			positives++;
 			addBoundingBoxMarker(markerArray,minX,maxX,minY,maxY,minZ,maxZ);
@@ -175,7 +175,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	}
 
 
-	printf("\n Positives: %i\n",positives);
+	//printf("\n Positives: %i\n",positives);
 	marker_array_pub_.publish(markerArray);
 }
 
@@ -185,14 +185,14 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 
 void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 {
-	printf("People: %i: ",(int)msg->people.size());
+	//printf("People: %i: ",(int)msg->people.size());
 	for (int i = 0;i<msg->people.size();i++)
 	{
-		printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
+	//	printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
 		personX = msg->people[0].pos.x;
 		personY = msg->people[0].pos.y;
 	}
-	printf("\n");
+	//printf("\n");
 }
 
 int main(int argc, char **argv) {
@@ -205,6 +205,7 @@ int main(int argc, char **argv) {
   server.setCallback(f);
 
   marker_array_pub_   = nh_.advertise<visualization_msgs::MarkerArray>("/person", 1);
+  //radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/camera/pointcloud", 1, allRadarCallback);
   radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/radar/RScan", 1, allRadarCallback);
   laser_sub_ = nh_.subscribe<sensor_msgs::LaserScan>("/scan", 1, laserCallback);
   tracker_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1, trackerCallback);

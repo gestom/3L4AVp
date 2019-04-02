@@ -14,10 +14,25 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   dynamic_reconfigure
+  sensor_msgs
+  stereo_msgs 
+  tf2
+  cv_bridge
+  eigen_conversions
+  image_geometry
+  image_transport  
   rosbag
   laser_geometry
 )
 find_package(PCL REQUIRED)
+find_package(Boost REQUIRED)
+find_package(Eigen3 QUIET)
+if(NOT EIGEN3_FOUND)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
+endif()
+find_package(OpenCV REQUIRED)
+include_directories(include ${BOOST_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
 ## system dependencies are found with cmake's conventions
 # find_package(boost required components system)
 ## uncomment this if the package has a setup.py. This macro ensures
@@ -123,16 +138,18 @@ add_executable(radarology src/radarology.cpp)
 add_executable(legFilter src/legFilter.cpp)
 add_executable(radar_detector_ol src/radar_detector_ol.cpp src/svm.cpp)
 add_executable(laser_labelling src/laser_labelling.cpp)
-
+add_executable(evaluator src/evaluator.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(radarology ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
+add_dependencies(evaluator ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 add_dependencies(legFilter ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 add_dependencies(radar_detector_ol ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 add_dependencies(laser_labelling ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(radarology ${catkin_LIBRARIES} )
+target_link_libraries(evaluator ${catkin_LIBRARIES} )
 target_link_libraries(legFilter ${catkin_LIBRARIES} )
 target_link_libraries(radar_detector_ol ${catkin_LIBRARIES} )
 target_link_libraries(laser_labelling ${catkin_LIBRARIES} )
