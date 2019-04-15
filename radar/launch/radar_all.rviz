@@ -139,6 +139,15 @@ Visualization Manager:
       Transport Hint: raw
       Unreliable: false
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /people_tracker/marker_array
+      Name: MarkerArray
+      Namespaces:
+        people_id: true
+        people_trajectory: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

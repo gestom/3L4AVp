@@ -21,7 +21,7 @@ boost::shared_ptr<image_transport::ImageTransport> it_;
 image_transport::Subscriber sub_depth_;
 image_transport::Publisher depth_pub_;
 ros::Publisher info_pub_;
-ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_;
+ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_;
 float fy,fx,cx,cy;
 float personRadx;
 float personRady;
@@ -34,6 +34,10 @@ float totalDistR;
 float totalDistL;
 ros::Time timestampS;
 int numOfCycles=0;
+float covL=0.1;
+float covR=0.1;
+float realX;
+float realY;
 
 typedef struct
 {
@@ -211,10 +215,14 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 		x = x/numPoints; 
 		personCamx=z;
 		personCamy=-x; 
-
-		cout<< " Cam " << personCamx << " " << personCamy << endl;
-		cout<< " Rad " << personRadx << " " << personRady << endl; 
-		cout<< " Leg " << personLegx << " " << personLegy << endl; 
+		
+		realX=((1/covL)*personLegx + (1/covR)*personRadx)/((1/covL)+(1/covR));
+		realY=((1/covL)*personLegy + (1/covR)*personRady)/((1/covL)+(1/covR));
+		
+		//covL=msg->people[0].covariance[0];
+		//cout << "Covariance Leg " << covL << endl;
+		cout<< "Cam/Rad/Leg " << personCamx << " " << personCamy << " " << personRadx << " " << personRady << " " << covR << " " <<  personLegx << " " << personLegy << " " << covL <<  endl;
+		//cout<< " Leg/Rad filter " << realX << " " << realY << endl; 
 		//Computing distances
 		float distRC=0;
 		float distCL=0;
@@ -224,8 +232,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 		if(!isnan(distRC)|| !isnan(distCL)){
 			totalDistR+=distRC;
 			totalDistL+=distCL;
-			cout << "Radar current " << distRC << " Average distance " << totalDistR/numofDetection << " Detections " << numofDetection << endl;
-			cout << "Laser current " << distCL << " Average distance " << totalDistL/numofDetection << " Detections " << numofDetection << endl;
+			//cout << "Radar current " << distRC << " Average distance " << totalDistR/numofDetection << " Detections " << numofDetection << endl;
+			//cout << "Laser current " << distCL << " Average distance " << totalDistL/numofDetection << " Detections " << numofDetection << endl;
 				//cout << "Dist radar " << distRC << endl;
 				//cout << "Dist Hokuyo " << distCL << endl;
 		}
@@ -258,8 +266,16 @@ void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
         {
 	personLegx=msg->people[0].pos.x;
  	personLegy=msg->people[0].pos.y;
+	covL=msg->people[0].covariance[0];
+	//cout << "Covariance Leg " << covL << endl;
 	}
 	
+}
+
+void varianceCallback(const geometry_msgs::PoseArrayConstPtr& msg){
+
+	covR=msg->poses[0].position.x;
+	//cout<<"Covariance Radar " << covR << endl;
 }
 
 int main(int argc, char **argv) 
@@ -275,6 +291,7 @@ int main(int argc, char **argv)
 	info_sub_ = nh_.subscribe("/camera/depth/camera_info",1,infoCallback);
 	info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/person/depth/camera_info",1);
 	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/radar_detector_ol/poses",1,radarPoseCallback);
+	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
 
 

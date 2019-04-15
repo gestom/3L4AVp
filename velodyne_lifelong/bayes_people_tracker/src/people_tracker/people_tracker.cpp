@@ -18,6 +18,7 @@ PeopleTracker::PeopleTracker() : detect_seq(0), marker_seq(0) {
   std::string pub_topic_trajectory;
   std::string pub_topic_trajectory_acc;
   std::string pub_topic_marker;
+  std::string pub_variance;
   
   // Initialize node parameters from launch file or command line.
   // Use a private node handle so that multiple instances of the node can be run simultaneously
@@ -55,6 +56,8 @@ PeopleTracker::PeopleTracker() : detect_seq(0), marker_seq(0) {
   private_node_handle.param("trajectory_acc", pub_topic_trajectory_acc, std::string("/people_tracker/trajectory_acc"));
   pub_trajectory_acc = n.advertise<geometry_msgs::PoseArray>(pub_topic_trajectory_acc.c_str(), 100, con_cb, con_cb);
   private_node_handle.param("marker", pub_topic_marker, std::string("/people_tracker/marker_array"));
+  pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_topic_marker.c_str(), 100, con_cb, con_cb);
+  private_node_handle.param("variance", pub_variance, std::string("/people_tracker/variance"));
   pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_topic_marker.c_str(), 100, con_cb, con_cb);
   
   boost::thread tracking_thread(boost::bind(&PeopleTracker::trackingThread, this));
@@ -220,7 +223,6 @@ void PeopleTracker::trackingThread() {
       std::vector<double> angles;
       double min_dist = DBL_MAX;
       double angle;
-      
       for(std::map<long, std::vector<geometry_msgs::Pose> >::const_iterator it = ppl.begin(); it != ppl.end(); ++it) {
 	poses.push_back(it->second[0]);
 	vels.push_back(it->second[1]);
@@ -233,7 +235,8 @@ void PeopleTracker::trackingThread() {
 	poseInTargetCoords.header.frame_id = target_frame;
 	poseInTargetCoords.header.stamp.fromSec(time_sec);
 	poseInTargetCoords.pose = it->second[0];
-	
+		
+  	ROS_INFO_STREAM("Variance: " << vars[0]);
 	//Find closest person and get distance and angle
 	if(strcmp(target_frame.c_str(), base_link.c_str())) {
 	  try {
@@ -268,12 +271,12 @@ void PeopleTracker::trackingThread() {
 	geometry_msgs::PoseArray trajectory_acc;
 	trajectory_acc.header.stamp = ros::Time::now();
   	trajectory_acc.header.frame_id = target_frame;
-	trajectory_acc.poses = poses;
+	trajectory_acc.poses = vars;
 	pub_trajectory_acc.publish(trajectory_acc);
       }
       
       //if(pub_trajectory.getNumSubscribers())
-      publishTrajectory(poses, vels, vars, pids, pub_trajectory);
+      publishTrajectory(poses, vels, vars, pids, pub_trajectory); //publsh(poses,vels...)
 
       /////////////////////////////////////////////////////////////
       // for(int i = 0; i < poses.size(); i++) {

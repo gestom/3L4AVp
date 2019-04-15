@@ -2,7 +2,7 @@
   
   <arg name="bag"/>
   <param name="use_sim_time" value="true"/>
-  <node pkg="rosbag" type="play" name="rosbag_play" args="--clock -r 1.0  $(arg bag)"/>
+  <node pkg="rosbag" type="play" name="rosbag_play" args="--clock -r  1.0  $(arg bag)"/>
   
   <!-- action and reconfigure clients to control the system
        <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="Reconfigurator"/>
@@ -30,7 +30,15 @@
   <node pkg="radar" type="radarology" name="radarology" output="log"/>
   <node pkg="radar" type="legFilter" name="legFilter" output="screen"/>
   <!-- node pkg="camera_pcl" type="camera_pcl" name="camera_pcl" output="log"/ -->
-	 
+	
+  <rosparam command="load" file="$(env PWD)/src/3L4AV/velodyne_lifelong/velodyne_detector.yaml"/>
+  <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker" respawn="true">
+    <param name="base_link" type="string" value="velodyne"/>
+    <param name="target_frame" type="string" value="map"/>
+  </node>
+
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_velodyne" args="0 0 0 0 0 0 map velodyne 100"/>
+ 
   <!-- Static transform from map to base_radar_link for visualization of stand-alone mmWave sensor using Rviz -->
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args="0.08 0.13 0 0 0 0 map base_radar_link 100"/>
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_laser" args="0 0 0 0 0 0 map laser 100"/>

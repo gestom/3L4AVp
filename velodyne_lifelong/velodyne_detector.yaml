@@ -6,11 +6,11 @@ bayes_people_tracker:
         std_limit: 1.0                                         # upper limit for the standard deviation of the estimated position 
     detectors:                                                 # Add detectors under this namespace
         adaptive_clustering:                                   # Name of detector (used internally to identify them). Has to be unique.
-            topic: "/adaptive_clustering/poses"                # The topic on which the geometry_msgs/PoseArray is published
+            topic: "/radar_detector_ol/poses"                  # The topic on which the geometry_msgs/PoseArray is published
             observation_model: "CARTESIAN"                     # Obeservation model: CARTESIAN or POLAR
             noise_params:                                      # The noise for the cartesian or polar observation model
                 x: 0.5
                 y: 0.5
-            matching_algorithm: "NN"                           # The algorthim to match different detections. NN = Nearest Neighbour, NNJPDA = NN Joint Probability Data Association
+            matching_algorithm: "NNJPDA"                       # The algorthim to match different detections. NN = Nearest Neighbour, NNJPDA = NN Joint Probability Data Association
             seq_size: 3                                        # Minimum number of observations for new track creation
             seq_time: 0.2                                      # Minimum interval between observations for new track creation
