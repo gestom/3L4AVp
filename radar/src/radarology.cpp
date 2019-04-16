@@ -27,7 +27,10 @@ ros::Subscriber laser_sub_;
 ros::Publisher point_positive_pub_;
 ros::Publisher point_negative_pub_;
 ros::Publisher  marker_array_pub_;
+ros::Publisher point_unknown_pub_;
 ros::Subscriber tracker_sub_;
+ros::Time currentT;
+ros::Time legT;
 typedef pcl::PointXYZHSV PointTypeFull;
 typedef pcl::PointCloud<PointTypeFull> PointCloud;
 float personX,personY;
@@ -122,7 +125,9 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	cec.segment (*clusters);
 	//std::cerr << ">> Done: " << tt.toc () << " ms\n";
 	//printf("Clusters size: %i: ",clusters->size());
-	
+
+	currentT = ros::Time::now();
+	cout << "Time " << currentT-legT << endl;	
 	int positives = 0;
 	for (int i = 0; i < clusters->size (); ++i)
 	{
@@ -163,15 +168,20 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 			pcl_msg->points.push_back (pcl_pc->points[(*clusters)[i].indices[j]]);
 			pcl_msg->width++;
 		}
-		if (sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)) > personDistance)
-		{
-			point_negative_pub_.publish (pcl_msg);
-		} else {
-			printf("Offset: %f %f %f %f\n",meanX,meanY,personX,personY);
-			point_positive_pub_.publish (pcl_msg);
-			positives++;
-			addBoundingBoxMarker(markerArray,minX,maxX,minY,maxY,minZ,maxZ);
+		if((currentT-legT)>ros::Duration(1.0)){
+			point_unknown_pub_.publish(pcl_msg);
+		}else {
+			if (sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)) > personDistance)
+			{
+				point_negative_pub_.publish (pcl_msg);
+			} else {
+				printf("Offset: %f %f %f %f\n",meanX,meanY,personX,personY);
+				point_positive_pub_.publish (pcl_msg);
+				positives++;
+				addBoundingBoxMarker(markerArray,minX,maxX,minY,maxY,minZ,maxZ);
+			}
 		}
+
 	}
 
 
@@ -191,6 +201,7 @@ void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 	//	printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
 		personX = msg->people[0].pos.x;
 		personY = msg->people[0].pos.y;
+		legT = msg->people[0].header.stamp;
 	}
 	//printf("\n");
 }
@@ -211,6 +222,7 @@ int main(int argc, char **argv) {
   tracker_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1, trackerCallback);
   point_positive_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/positive", 100000);
   point_negative_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/negative", 100000);
+  point_unknown_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/unknown", 100000);
 
   ros::spin();
   return 0;

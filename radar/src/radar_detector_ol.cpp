@@ -40,6 +40,7 @@ private:
   ros::NodeHandle node_handle_;
   ros::Subscriber point_cloud_pos_sub_;
   ros::Subscriber point_cloud_neg_sub_;
+  ros::Subscriber point_cloud_ukn_sub_;
   ros::Publisher  pose_array_pub_;
   ros::Publisher  marker_array_pub_;
   
@@ -75,7 +76,8 @@ public:
   
   void pointCloudPosCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2);
   void pointCloudNegCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2);
-
+  void pointCloudUknCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2);
+  
   /*** pcl::PointXYZHSV for radar data. xyz->xyz, hsv-> intensity, range, velocity (doppler) ***/
   void extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc, int type);
   void extractFeature(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc, Feature &f);
@@ -136,6 +138,7 @@ Object3dDetector::Object3dDetector() {
   /*** Subscribers ***/
   point_cloud_pos_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("positive", 100, &Object3dDetector::pointCloudPosCallback, this);
   point_cloud_neg_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("negative", 100, &Object3dDetector::pointCloudNegCallback, this);
+  point_cloud_ukn_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("unknown", 100, &Object3dDetector::pointCloudUknCallback, this);
 }
 
 Object3dDetector::~Object3dDetector() {
@@ -162,6 +165,17 @@ void Object3dDetector::pointCloudPosCallback(const sensor_msgs::PointCloud2::Con
   if(print_fps_)if(++frames>10){std::cout<<"[radar_detector_ol]: fps = "<<float(frames)/(float(clock()-start_time)/CLOCKS_PER_SEC)<<", timestamp = "<<clock()/CLOCKS_PER_SEC<<", positive = "<<positive_<<", negative = "<<negative_<<std::endl;reset = true;}//fps
 }
 
+void Object3dDetector::pointCloudUknCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2) {
+  if(print_fps_)if(reset){frames=0;start_time=clock();reset=false;}//fps
+  
+  pcl::PointCloud<pcl::PointXYZHSV>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZHSV>);
+  pcl::fromROSMsg(*ros_pc2, *pcl_pc);
+  
+  extractCluster(pcl_pc, 0); // 0 means unknown examples passed for classification
+  classify();
+  
+  if(print_fps_)if(++frames>10){std::cout<<"[radar_detector_ol]: fps = "<<float(frames)/(float(clock()-start_time)/CLOCKS_PER_SEC)<<", timestamp = "<<clock()/CLOCKS_PER_SEC<<", positive = "<<positive_<<", negative = "<<negative_<<std::endl;reset = true;}//fps
+}
 
 void Object3dDetector::pointCloudNegCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2) {
   pcl::PointCloud<pcl::PointXYZHSV>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZHSV>);
