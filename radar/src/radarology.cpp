@@ -127,7 +127,6 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	//printf("Clusters size: %i: ",clusters->size());
 
 	currentT = ros::Time::now();
-	cout << "Time " << currentT-legT << endl;	
 	int positives = 0;
 	for (int i = 0; i < clusters->size (); ++i)
 	{
@@ -159,6 +158,9 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		meanY = meanY/((*clusters)[i]).indices.size();
 		//printf("\n %f, Mean Velocity  %f ",sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)),meanV);
 
+		if(meanX>5 || meanX<1){
+		continue;
+		}
 		float intensity = 0.1;
 		pcl_msg->header.frame_id = "laser";
 		pcl_msg->height = 1;

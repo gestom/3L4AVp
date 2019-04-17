@@ -1,0 +1,20 @@
+To run experiments with pretrained model:
+Clone repo for transformation
+git clone https://github.com/majerfil/transformation.git
+
+roslaunch radar radar.launch
+
+In seperate window run rosbag for training 
+rosbag play ~/datasets/radar/second/processed/velo_res/velo_res_no_smoke.bag 
+after finishing run rosbag with smoke;
+rosbag play ~/datasets/radar/fourth/processed/move_smoke_2.bag 
+
+cd ~/.ros/log/latest/
+mv evaluator-3-stdout.log ~/datasets/radar/evaluation/log/ev_fourth_move_smoke_2.log
+
+running the evaluation go to repo and run:
+./compute ../log/ev_fourth_move_smoke_2.log a
+
+For online learning skip running first rosbag and run desired rosbag to train.
+
+

@@ -504,13 +504,14 @@ void Object3dDetector::classify() {
       marker.color.r = 0.0;
       marker.color.g = 1.0;
       marker.color.b = 0.5;
+      marker.lifetime = ros::Duration(0.1);
+      marker_array.markers.push_back(marker);
     } else {
       marker.color.r = 0.0;
       marker.color.g = 0.5;
       marker.color.b = 1.0;
+    
     }
-    marker.lifetime = ros::Duration(0.1);
-    marker_array.markers.push_back(marker);
   }
   
   /*** publish pose and marker ***/
