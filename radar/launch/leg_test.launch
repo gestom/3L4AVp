@@ -1,0 +1,17 @@
+
+<launch>
+
+<arg name="bag"/>
+<param name="use_sim_time" value="true"/>
+<node pkg="rosbag" type="play" name="rosbag_play" args="--clock -r 1 $(arg bag)"/>
+
+<!-- ROS leg detector -->
+    <node pkg="leg_detector" type="leg_detector" name="leg_detector" args="scan:=scan $(find leg_detector)/config/trained_leg_detector.yaml" output="screen">
+    <param name="publish_leg_markers" type="bool" value="true"/>
+    <param name="publish_people_markers" type="bool" value="true"/>
+    <param name="fixed_frame" type="string" value="laser"/>
+    </node>
+
+<node pkg="radar" type="legFilter" name="legFilter" output="screen"/>
+
+</launch>
