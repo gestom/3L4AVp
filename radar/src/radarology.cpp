@@ -158,7 +158,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		meanY = meanY/((*clusters)[i]).indices.size();
 		//printf("\n %f, Mean Velocity  %f ",sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)),meanV);
 
-		if(meanX>5 || meanX<1){
+		if(meanX>5 || meanX<1 || meanY>1.5){
 		continue;
 		}
 		float intensity = 0.1;
