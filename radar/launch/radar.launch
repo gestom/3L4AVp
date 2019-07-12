@@ -1,9 +1,7 @@
 <launch>
-  <!-- 
   <arg name="bag"/>
   <param name="use_sim_time" value="true"/>
-  <node pkg="rosbag" type="play" name="rosbag_play" args=" -clock -l -r  1.0  $(arg bag)"/>
-  -->
+  <node pkg="rosbag" type="play" name="rosbag_play" args=" --clock -l -r  1.0  $(arg bag)"/>
   <!-- action and reconfigure clients to control the system
        <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="Reconfigurator"/>
   -->
@@ -18,8 +16,8 @@
   <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" output="log" respawn="false">
     <param name="print_fps" type="bool" value="false"/>
     <param name="max_trains" type="int" value="5"/>
-    <param name="round_positives" type="int" value="20"/>
-    <param name="round_negatives" type="int" value="20"/>
+    <param name="round_positives" type="int" value="10"/>
+    <param name="round_negatives" type="int" value="10"/>
     <param name="find_the_best_training_parameters" type="bool" value="true"/>
   </node>
   
