@@ -12,7 +12,7 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <geometry_msgs/PoseArray.h>
 #include <people_msgs/PositionMeasurementArray.h>
-
+#include <visualization_msgs/Marker.h>
 using namespace cv;
 using namespace std;
 ros::Subscriber groundTruthSub;
@@ -21,7 +21,7 @@ boost::shared_ptr<image_transport::ImageTransport> it_;
 image_transport::Subscriber sub_depth_;
 image_transport::Publisher depth_pub_;
 ros::Publisher info_pub_;
-ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_;
+ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_, deep_radar_sub_;
 float fy,fx,cx,cy;
 float personRadx;
 float personRady;
@@ -29,6 +29,8 @@ float personCamx;
 float personCamy;
 float personLegx;
 float personLegy;
+float personDeepx;
+float personDeepy;
 int numofDetection;
 float totalDistR;
 float totalDistL;
@@ -221,7 +223,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 		
 		//covL=msg->people[0].covariance[0];
 		//cout << "Covariance Leg " << covL << endl;
-		cout<< "Cam/Rad/Leg " << personCamx << " " << personCamy << " " << personRadx << " " << personRady << " " << covR << " " <<  personLegx << " " << personLegy << " " << covL <<  endl;
+		cout<< "Cam/Rad/Leg/Deep " << personCamx << " " << personCamy << " " << personRadx << " " << personRady << " " << covR << " " <<  personLegx << " " << personLegy << " " << covL <<  " " << personDeepx << " " << personDeepy <<endl;
 		//cout<< " Leg/Rad filter " << realX << " " << realY << endl; 
 		//Computing distances
 		float distRC=0;
@@ -272,6 +274,15 @@ void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
 	
 }
 
+void deepPoseCallback(const visualization_msgs::MarkerConstPtr& msg){
+
+	
+	personDeepx=msg->points[0].x;
+ 	personDeepy=msg->points[0].y;
+	//cout << "Covariance Leg " << covL << endl;
+	
+}
+
 void varianceCallback(const geometry_msgs::PoseArrayConstPtr& msg){
 
 	covR=msg->poses[0].position.x;
@@ -293,6 +304,7 @@ int main(int argc, char **argv)
 	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/radar_detector_ol/poses",1,radarPoseCallback);
 	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
+	deep_radar_sub_ = nh_.subscribe<visualization_msgs::Marker>("/meanPoint",1, deepPoseCallback); 
 
 
 	ros::spin();
