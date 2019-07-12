@@ -1,0 +1,3 @@
+[submodule "deep-radar"]
+	path = deep-radar
+	url = https://github.com/broughtong/deep-radar.git
