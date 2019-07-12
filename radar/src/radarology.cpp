@@ -22,6 +22,7 @@ using namespace std;
 float clusterRadius=0.5;
 float personDistance=0.5;
 int minClusterSize = 10;
+int lifeLong=0;
 ros::Subscriber radar_sub_;
 ros::Subscriber laser_sub_;
 ros::Publisher point_positive_pub_;
@@ -172,7 +173,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		}
 		if((currentT-legT)>ros::Duration(1.0)){
 			point_unknown_pub_.publish(pcl_msg);
-		}else {
+		}else if(lifeLong >=10) {
 			if (sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)) > personDistance)
 			{
 				point_negative_pub_.publish (pcl_msg);
@@ -197,6 +198,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 
 void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 {
+	if(msg->people.size() == 0) lifeLong=0;
 	//printf("People: %i: ",(int)msg->people.size());
 	for (int i = 0;i<msg->people.size();i++)
 	{
@@ -204,6 +206,7 @@ void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 		personX = msg->people[0].pos.x;
 		personY = msg->people[0].pos.y;
 		legT = msg->people[0].header.stamp;
+		lifeLong++;
 	}
 	//printf("\n");
 }
