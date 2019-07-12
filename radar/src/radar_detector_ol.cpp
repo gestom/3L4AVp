@@ -215,16 +215,17 @@ void Object3dDetector::extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc,
     features_.push_back(f);
     
     if(train_round_ < max_trains_) {
-      saveFeature(f, svm_problem_.x[svm_problem_.l]);   
       if(type == 1 && positive_ < round_positives_) {
-	svm_problem_.y[svm_problem_.l++] = 1;
-	++positive_;
-	std::cout << "positive: " << positive_ << std::endl;
+        saveFeature(f, svm_problem_.x[svm_problem_.l]);
+        svm_problem_.y[svm_problem_.l++] = 1;
+        ++positive_;
+        std::cout << "positive: " << positive_ << std::endl;
       }
       if(type == -1 && negative_ < round_negatives_) {
-	svm_problem_.y[svm_problem_.l++] = -1;
-	++negative_;
-	std::cout << "negative: " << negative_ << std::endl;
+        saveFeature(f, svm_problem_.x[svm_problem_.l]);
+        svm_problem_.y[svm_problem_.l++] = -1;
+        ++negative_;
+        std::cout << "negative: " << negative_ << std::endl;
       }
     }
   }
