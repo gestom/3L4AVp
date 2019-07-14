@@ -154,14 +154,16 @@ int main(int argc,char* argv[])
 
 	while(inFile >> ret >> cx >> cy >> rx >>ry >> rc >> lx >> ly >> lc)
 	{
-		camX.push_back(cx);
-		camY.push_back(cy);
-		radTX.push_back(rx);
-		radTY.push_back(ry);
-		radC.push_back(rc);
-		lasTX.push_back(lx);
-		lasTY.push_back(ly);
-		lasC.push_back(lc);
+		if (rx*ry !=0){
+			camX.push_back(cx);
+			camY.push_back(cy);
+			radTX.push_back(rx);
+			radTY.push_back(ry);
+			radC.push_back(rc);
+			lasTX.push_back(lx);
+			lasTY.push_back(ly);
+			lasC.push_back(lc);
+		}
 	}
 	outlierFilter(&radTX,&radTY);
 	outlierFilter(&lasTX,&lasTY);

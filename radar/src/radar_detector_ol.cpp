@@ -68,7 +68,7 @@ private:
   int max_trains_;
   int train_round_;
   std::vector<double> clusters_probability_;
-  bool find_the_best_training_parameters_;
+  bool perform_learning;
   
 public:
   Object3dDetector();
@@ -96,13 +96,13 @@ Object3dDetector::Object3dDetector() {
   private_nh.param<bool>("print_fps", print_fps_, false);
   private_nh.param<std::string>("frame_id", frame_id_, "base_radar_link");
   private_nh.param<float>("cluster_tolerance", cluster_tolerance_, 0.4);
-  private_nh.param<int>("cluster_size_min", cluster_size_min_, 3);
+  private_nh.param<int>("cluster_size_min", cluster_size_min_, 5);
   private_nh.param<int>("cluster_size_max", cluster_size_max_, 300);
   private_nh.param<float>("human_probability", human_probability_, 0.5);
   private_nh.param<int>("round_positives", round_positives_, 10);
   private_nh.param<int>("round_negatives", round_negatives_, 10);
   private_nh.param<int>("max_trains", max_trains_, 3);
-  private_nh.param<bool>("find_the_best_training_parameters", find_the_best_training_parameters_, true);
+  private_nh.param<bool>("perform_learning", perform_learning, true);
   
   /*** SVM ***/
   svm_node_ = (struct svm_node *)malloc((FEATURE_SIZE+1)*sizeof(struct svm_node)); // 1 more size for end index (-1)
@@ -134,11 +134,33 @@ Object3dDetector::Object3dDetector() {
   train_round_ = 0;
   positive_ = 0;
   negative_ = 0;
+
+  /*** pre_trained model ***/
+  if (perform_learning == false){
+	  svm_model_ = svm_load_model("pedestrian.model");
+	  if(svm_save_model("pedestrian.modela", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
+	  train_round_ = 1;
+  }
+  svm_parameter_.degree = 3; // default 3
+  svm_parameter_.gamma = 0.02; // default 1.0/(float)FEATURE_SIZE
+  svm_parameter_.coef0 = 0; // default 0
+  svm_parameter_.cache_size = 256; // default 100
+  svm_parameter_.eps = 0.001; // default 0.001
+  svm_parameter_.C = 8; // default 1
+  svm_parameter_.nr_weight = 0;
+  svm_parameter_.weight_label = NULL;
+  svm_parameter_.weight = NULL;
+  svm_parameter_.nu = 0.5;
+  svm_parameter_.p = 0.1;
+  svm_parameter_.shrinking = 0;
+  svm_parameter_.probability = 1;
+
   
   /*** Subscribers ***/
   point_cloud_pos_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("positive", 100, &Object3dDetector::pointCloudPosCallback, this);
   point_cloud_neg_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("negative", 100, &Object3dDetector::pointCloudNegCallback, this);
   point_cloud_ukn_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("unknown", 100, &Object3dDetector::pointCloudUknCallback, this);
+ 
 }
 
 Object3dDetector::~Object3dDetector() {
@@ -160,7 +182,7 @@ void Object3dDetector::pointCloudPosCallback(const sensor_msgs::PointCloud2::Con
   
   extractCluster(pcl_pc, 1); // 1 means positive examples
   classify();
-  train();
+  if (perform_learning) train();
   
   if(print_fps_)if(++frames>10){std::cout<<"[radar_detector_ol]: fps = "<<float(frames)/(float(clock()-start_time)/CLOCKS_PER_SEC)<<", timestamp = "<<clock()/CLOCKS_PER_SEC<<", positive = "<<positive_<<", negative = "<<negative_<<std::endl;reset = true;}//fps
 }
@@ -173,6 +195,7 @@ void Object3dDetector::pointCloudUknCallback(const sensor_msgs::PointCloud2::Con
   
   extractCluster(pcl_pc, 0); // 0 means unknown examples passed for classification
   classify();
+  fprintf(stdout,"Classifying unknown\n");
   
   if(print_fps_)if(++frames>10){std::cout<<"[radar_detector_ol]: fps = "<<float(frames)/(float(clock()-start_time)/CLOCKS_PER_SEC)<<", timestamp = "<<clock()/CLOCKS_PER_SEC<<", positive = "<<positive_<<", negative = "<<negative_<<std::endl;reset = true;}//fps
 }
@@ -462,7 +485,6 @@ void Object3dDetector::classify() {
     pose.position.y = it->centroid[1];
     pose.position.z = it->centroid[2];
     pose.orientation.w = 1;
-    pose_array.poses.push_back(pose);
     
     /*** bounding box ***/
     visualization_msgs::Marker marker;
@@ -506,6 +528,7 @@ void Object3dDetector::classify() {
       marker.color.g = 1.0;
       marker.color.b = 0.5;
       marker.lifetime = ros::Duration(0.1);
+      pose_array.poses.push_back(pose);
       marker_array.markers.push_back(marker);
     } else {
       marker.color.r = 0.0;
@@ -529,7 +552,10 @@ void Object3dDetector::classify() {
 
 void Object3dDetector::train() {
   if((positive_+negative_) < (round_positives_+round_negatives_))
-    return;
+  {
+	  printf("Not enough data for training, aborting\n");
+	  return;
+  }
   
   clock_t t = clock();
   std::cout << "\n****** Training round " << (train_round_+1) << " started ******\n" << std::endl;
@@ -585,8 +611,6 @@ void Object3dDetector::train() {
   }
   
   /*** train ***/
-  if(find_the_best_training_parameters_) {
-    std::ofstream s;
     s.open("svm_training_data");
     for(int i = 0; i < svm_problem_.l; i++) {
       s << svm_problem_.y[i];
@@ -613,9 +637,8 @@ void Object3dDetector::train() {
       }
       pclose(fp);
     }
-  }
   svm_model_ = svm_train(&svm_problem_, &svm_parameter_);
-  
+
   /*** reset parameters ***/
   if(train_round_ < max_trains_) {
     train_round_++;
@@ -624,9 +647,8 @@ void Object3dDetector::train() {
   }
   clusters_probability_.clear();
   
+  if(svm_save_model("pedestrian.model", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
   /*** debug saving ***/
-  //if(svm_save_model("pedestrian.model", svm_model_) == 0)
-   //  std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
   std::cout << "\n****** Training round " << train_round_ << " finished with " << float(clock()-t)/CLOCKS_PER_SEC << " seconds ******\n" << std::endl;
 }
 

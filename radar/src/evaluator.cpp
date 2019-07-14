@@ -252,8 +252,8 @@ void infoCallback(const sensor_msgs::CameraInfoPtr& msg){
 	info_pub_.publish(msg);
 }
 
-void radarPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg){
-
+void radarPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg)
+{
 	personRadx=msg->poses[0].position.x;
 	personRady=msg->poses[0].position.y;
 	

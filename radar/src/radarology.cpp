@@ -171,9 +171,10 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 			pcl_msg->points.push_back (pcl_pc->points[(*clusters)[i].indices[j]]);
 			pcl_msg->width++;
 		}
-		if((currentT-legT)>ros::Duration(1.0)){
+		if((lifeLong <10) ||((currentT-legT)>ros::Duration(1.0))){
 			point_unknown_pub_.publish(pcl_msg);
-		}else if(lifeLong >=10) {
+			fprintf(stdout,"Publishing unknown\n");
+		}else{
 			if (sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)) > personDistance)
 			{
 				point_negative_pub_.publish (pcl_msg);
