@@ -15,6 +15,8 @@
 // SVM
 #include "svm.h"
 
+#include <boost/algorithm/string.hpp> 
+
 typedef struct feature {
   /*** for visualization ***/
   Eigen::Vector4f centroid;
@@ -84,6 +86,7 @@ public:
   void saveFeature(Feature &f, struct svm_node *x);
   void classify(int type);
   void train();
+  void loadFromFile();
 };
 
 Object3dDetector::Object3dDetector() {
@@ -135,11 +138,13 @@ Object3dDetector::Object3dDetector() {
   positive_ = 0;
   negative_ = 0;
 
+  //perform_learning = false;
   /*** pre_trained model ***/
   if (perform_learning == false){
-	  svm_model_ = svm_load_model("pedestrian.model");
-	  if(svm_save_model("pedestrian.modela", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
-	  train_round_ = 1;
+	  // svm_model_ = svm_load_model("pedestrian.model");
+	  // if(svm_save_model("pedestrian.modela", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
+	  // train_round_ = 1;
+	  loadFromFile();
   }
   svm_parameter_.degree = 3; // default 3
   svm_parameter_.gamma = 0.02; // default 1.0/(float)FEATURE_SIZE
@@ -559,6 +564,8 @@ void Object3dDetector::classify(int type) {
 }
 
 void Object3dDetector::train() {
+
+	printf("%i %i %i %i\n", positive_, negative_, round_positives_, round_negatives_);
   if((positive_+negative_) < (round_positives_+round_negatives_))
   {
 	  printf("Not enough data for training, aborting\n");
@@ -658,6 +665,37 @@ void Object3dDetector::train() {
   if(svm_save_model("pedestrian.model", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
   /*** debug saving ***/
   std::cout << "\n****** Training round " << train_round_ << " finished with " << float(clock()-t)/CLOCKS_PER_SEC << " seconds ******\n" << std::endl;
+}
+
+void Object3dDetector::loadFromFile()
+{
+	printf("here\n");
+	std::ifstream input("svm_training_data");
+	int ctr = 0;
+	for(std::string line; getline(input, line);)
+	{
+		std::vector<std::string> tokens;
+		boost::split(tokens, line, boost::is_any_of(" "));
+
+		std::istringstream is(line);
+
+		is >> svm_problem_.y[ctr];
+
+		if(svm_problem_.y[ctr] == 1)
+			positive_++;
+		else
+			negative_++;
+
+		for(int i = 0; i < 62; i++)
+		{
+			is >> svm_problem_.x[ctr][i].value;
+			svm_problem_.x[ctr][i].index = i;
+		}
+
+		ctr++;
+	}
+	svm_problem_.l = ctr;
+	train();
 }
 
 int main(int argc, char **argv) {
