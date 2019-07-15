@@ -82,7 +82,7 @@ public:
   void extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc, int type);
   void extractFeature(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc, Feature &f);
   void saveFeature(Feature &f, struct svm_node *x);
-  void classify();
+  void classify(int type);
   void train();
 };
 
@@ -181,7 +181,7 @@ void Object3dDetector::pointCloudPosCallback(const sensor_msgs::PointCloud2::Con
   pcl::fromROSMsg(*ros_pc2, *pcl_pc);
   
   extractCluster(pcl_pc, 1); // 1 means positive examples
-  classify();
+  classify(1); // 1 means positive examples
   if (perform_learning) train();
   
   if(print_fps_)if(++frames>10){std::cout<<"[radar_detector_ol]: fps = "<<float(frames)/(float(clock()-start_time)/CLOCKS_PER_SEC)<<", timestamp = "<<clock()/CLOCKS_PER_SEC<<", positive = "<<positive_<<", negative = "<<negative_<<std::endl;reset = true;}//fps
@@ -194,7 +194,7 @@ void Object3dDetector::pointCloudUknCallback(const sensor_msgs::PointCloud2::Con
   pcl::fromROSMsg(*ros_pc2, *pcl_pc);
   
   extractCluster(pcl_pc, 0); // 0 means unknown examples passed for classification
-  classify();
+  classify(0); // 0 means unknown examples passed for classification
   fprintf(stdout,"Classifying unknown\n");
   
   if(print_fps_)if(++frames>10){std::cout<<"[radar_detector_ol]: fps = "<<float(frames)/(float(clock()-start_time)/CLOCKS_PER_SEC)<<", timestamp = "<<clock()/CLOCKS_PER_SEC<<", positive = "<<positive_<<", negative = "<<negative_<<std::endl;reset = true;}//fps
@@ -442,42 +442,50 @@ void Object3dDetector::saveFeature(Feature &f, struct svm_node *x) {
   /****** Debug print ******/
 }
 
-void Object3dDetector::classify() {
+void Object3dDetector::classify(int type) {
   geometry_msgs::PoseArray pose_array;
   visualization_msgs::MarkerArray marker_array;
   
   for(std::vector<Feature>::iterator it = features_.begin(); it != features_.end(); it++) {
     bool svm_find_human = false;
-    
-    if(train_round_ > 0) {
-      /*** scale data ***/
-      saveFeature(*it, svm_node_);
-      for(int i = 0; i < FEATURE_SIZE; i++) {
-    	if(svm_range_[i][0] == svm_range_[i][1]) {
-    	  continue;
-	}
-    	if(svm_node_[i].value == svm_range_[i][0]) {
-    	  svm_node_[i].value = svm_xlower_;
-	} else if(svm_node_[i].value == svm_range_[i][1]) {
-    	  svm_node_[i].value = svm_xupper_;
-	} else {
-    	  svm_node_[i].value = svm_xlower_ + (svm_xupper_ - svm_xlower_) * (svm_node_[i].value - svm_range_[i][0]) / (svm_range_[i][1] - svm_range_[i][0]);
-	}
-      }
-      
-      /*** predict ***/
-      if(svm_check_probability_model(svm_model_)) {
-    	double prob_estimates[svm_model_->nr_class];
-    	svm_predict_probability(svm_model_, svm_node_, prob_estimates);
-    	clusters_probability_.push_back(prob_estimates[0]);
-    	if(prob_estimates[0] > human_probability_) {
-    	  svm_find_human = true;
-	}
-      } else {
-    	if(svm_predict(svm_model_, svm_node_) == 1)
-    	  svm_find_human = true;
-      }
+
+    if(type == 1)
+    {
+    	svm_find_human = true;
     }
+    else
+    {
+    
+	    if(train_round_ > 0) {
+	      /*** scale data ***/
+	      saveFeature(*it, svm_node_);
+	      for(int i = 0; i < FEATURE_SIZE; i++) {
+		    	if(svm_range_[i][0] == svm_range_[i][1]) {
+		    	  continue;
+					}
+	    		if(svm_node_[i].value == svm_range_[i][0]) {
+	    	 	 svm_node_[i].value = svm_xlower_;
+					} else if(svm_node_[i].value == svm_range_[i][1]) {
+		    	  svm_node_[i].value = svm_xupper_;
+					} else {
+	    	 	 svm_node_[i].value = svm_xlower_ + (svm_xupper_ - svm_xlower_) * (svm_node_[i].value - svm_range_[i][0]) / (svm_range_[i][1] - svm_range_[i][0]);
+					}
+	      }
+	      
+	      /*** predict ***/
+	      if(svm_check_probability_model(svm_model_)) {
+		    	double prob_estimates[svm_model_->nr_class];
+		    	svm_predict_probability(svm_model_, svm_node_, prob_estimates);
+		    	clusters_probability_.push_back(prob_estimates[0]);
+		    	if(prob_estimates[0] > human_probability_) {
+		    	  svm_find_human = true;
+					}
+	      } else {
+	    	if(svm_predict(svm_model_, svm_node_) == 1)
+	    	  svm_find_human = true;
+	      }
+	    }
+	  }
     
     /*** cluster pose ***/
     geometry_msgs::Pose pose;
