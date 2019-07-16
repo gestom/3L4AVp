@@ -8,12 +8,14 @@
 
 using namespace std;
 using namespace cv;
+float temporalFilter = 0.4;
+float outlierDistance = 0.6;
 
-
-
-void outlierFilter(vector<float> *x, vector<float> *y)
+float outlierFilter(vector<float> *x, vector<float> *y)
 {
-	/**/
+	/*aka temporal filter*/
+	int falsePositives = 0;
+	int values = 0;
 	float dx,dy,lx,ly;
 	dx=dy=0;
 	lx = (*x)[0];
@@ -25,20 +27,20 @@ void outlierFilter(vector<float> *x, vector<float> *y)
 		ly = (*y)[i];
 		dx = (*x)[i]-(*x)[i-1];
 		dy = (*y)[i]-(*y)[i-1];
-		printf("");
-		if (sqrt(dx*dx+dy*dy) > 0.2 && trk < 15)
+		if (sqrt(dx*dx+dy*dy) > temporalFilter && trk < 7)
 		{
 			(*x)[i] = (*x)[i-1]; 
 			(*y)[i] = (*y)[i-1];
 			trk++;
 		}else{
-			trk = 0; 
+			trk = 0;
 		}
 		printf("%f %f %f %f %f\n",lx,ly,(*x)[i],(*y)[i],sqrt(dx*dx+dy*dy));
 	}
+	return (float)falsePositives/values;
 }
 
-void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<float> y,vector<float> *xt,vector<float> *yt)
+void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<float> y,vector<float> nfx,vector<float> nfy,vector<float> *xt,vector<float> *yt,vector<float> *nfxt,vector<float> *nfyt)
 {
 	Mat T(2,3,CV_32FC1);
 	float cxxx = 0;
@@ -118,14 +120,35 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 	Mat ttx = T*xx;
 	Mat e = ttx-rx;
 
+//	printf("A\n");
 	//calculate error
 	float err = 0;
 	for (int i = 0;i<xi.size();i++){
 		xt->push_back(ttx.at<float>(0,i));
 		yt->push_back(ttx.at<float>(1,i));
 	       	err += sqrt(e.at<float>(0,i)*e.at<float>(0,i)+e.at<float>(1,i)*e.at<float>(1,i));
+//		printf("%.3f %.3f\n",ttx.at<float>(0,i),ttx.at<float>(1,i));
+		printf("AU %.3f %.3f %.3f %.3f\n",ttx.at<float>(0,i),ttx.at<float>(1,i),xi[i]+rxxx,yi[i]+rxxy);
 	}
-	printf("Error: %f\n",err/xi.size());
+//	printf("B\n");
+
+	//transform second batch of points
+	Mat nfxx(3,nfx.size(),CV_32FC1);
+	for (int i = 0;i<nfx.size();i++)
+	{
+		nfxx.at<float>(0,i)=nfx[i];
+		nfxx.at<float>(1,i)=nfy[i];
+	}
+	Mat nfttx = T*nfxx;
+
+	for (int i = 0;i<nfx.size();i++){
+		nfxt->push_back(nfttx.at<float>(0,i));
+		nfyt->push_back(nfttx.at<float>(1,i));
+		printf("NF %.3f %.3f %.3f %.3f\n",nfttx.at<float>(0,i),nfttx.at<float>(1,i),xi[i]+rxxx,yi[i]+rxxy);
+	}
+//	printf("C\n");
+
+//	printf("Error: %f\n",err/xi.size());
 }
 	
 
@@ -140,7 +163,12 @@ float dist(float x,float y, float rx,float ry)
 int main(int argc,char* argv[])
 {
 	/*read input*/
+	int laserOutliers,laserMeasurements,radarOutliers,radarMeasurements,kalmanOutliers,switchingOutliers;
+	laserOutliers=laserMeasurements=radarOutliers=radarMeasurements=switchingOutliers=kalmanOutliers=0;
+
 	vector<float> camX,camY,radX,radY,radC,lasX,lasY,lasC,radTX,radTY,lasTX,lasTY; 
+	vector<float> radNFX,radNFY,lasNFX,lasNFY;
+	vector<float> radNX,radNY,lasNX,lasNY;
 	if(argc<3)
 	{
 		fprintf(stderr,"usage: %s referencePoints.txt points.txt \n",argv[0]); 
@@ -165,12 +193,23 @@ int main(int argc,char* argv[])
 			lasC.push_back(lc);
 		}
 	}
-	outlierFilter(&radTX,&radTY);
-	outlierFilter(&lasTX,&lasTY);
+	radNX.reserve(radTX.size());
+	radNY.reserve(radTY.size());
+	lasNX.reserve(lasTX.size());
+	lasNY.reserve(lasTY.size());
+
+	copy(radTX.begin(),radTX.end(),back_inserter(radNX));
+	copy(radTY.begin(),radTY.end(),back_inserter(radNY));
+	copy(lasTX.begin(),lasTX.end(),back_inserter(lasNX));
+	copy(lasTY.begin(),lasTY.end(),back_inserter(lasNY));
+
+	float radarFPs = outlierFilter(&radTX,&radTY);
+	float laserFPs = outlierFilter(&lasTX,&lasTY);
 
 	/*perform transformations*/
-	transformRot(camX,camY,radTX,radTY,&radX,&radY);
-	transformRot(camX,camY,lasTX,lasTY,&lasX,&lasY);
+	transformRot(camX,camY,radTX,radTY,radNX,radNY,&radX,&radY,&radNFX,&radNFY);
+	transformRot(camX,camY,lasTX,lasTY,lasNX,lasNY,&lasX,&lasY,&lasNFX,&lasNFY);
+
 	float wr,wl,kfX,kfY,radD,lasD,kfD,sfD,sfX,sfY;
 	radD=lasD=sfD=kfD=0;
 	float lastRadX,lastRadY,lastLasX,lastLasY;
@@ -179,13 +218,12 @@ int main(int argc,char* argv[])
 	numRad=numLas=0;	
 	for (int i = 0;i<camX.size();i++)
 	{
-		if (radX[i] == lastRadX && radY[i] == lastRadY) numRad++; else numRad = 0; 
-		if (lasX[i] == lastLasX && lasY[i] == lastLasY) numLas++; else numLas = 0;
-
-		lastRadX = radX[i];
-		lastRadY = radY[i];
-		lastLasX = lasX[i];
-		lastLasY = lasY[i];
+		if (radNFX[i] == lastRadX && radNFY[i] == lastRadY) numRad++; else numRad = 0; 
+		if (lasNFX[i] == lastLasX && lasNFY[i] == lastLasY) numLas++; else numLas = 0;
+		lastRadX = radNFX[i];
+		lastRadY = radNFY[i];
+		lastLasX = lasNFX[i];
+		lastLasY = lasNFY[i];
 
 		//gradually inflate covariance in case information is obsolete
 		wr = 1/(radC[i]*(pow(2,numRad)));
@@ -203,10 +241,26 @@ int main(int argc,char* argv[])
 			sfX = lasX[i];
 			sfY = lasY[i];
 		}
-		lasD += dist(lasX[i],lasY[i],camX[i],camY[i]);
-		radD += dist(radX[i],radY[i],camX[i],camY[i]);
+		if (numLas == 0){
+			if (dist(lasNFX[i],lasNFY[i],camX[i],camY[i]) > outlierDistance) laserOutliers++; 
+			laserMeasurements++;
+		}
+		if (numRad == 0){
+			if (dist(radNFX[i],radNFY[i],camX[i],camY[i]) > outlierDistance) radarOutliers++; 
+			radarMeasurements++;
+		}
+		lasD += dist(lasNFX[i],lasNFY[i],camX[i],camY[i]);
+		radD += dist(radNFX[i],radNFY[i],camX[i],camY[i]);
 		kfD += dist(kfX,kfY,camX[i],camY[i]);
 		sfD += dist(sfX,sfY,camX[i],camY[i]);
+		if (dist(kfX,kfY,camX[i],camY[i]) > outlierDistance){
+			printf("OULIER %i\n",i);
+		       	kalmanOutliers++; 
+		}
+		if (dist(sfX,sfY,camX[i],camY[i]) > outlierDistance){
+			printf("SOULIER %i\n",i);
+		       	switchingOutliers++; 
+		}
 		//printf("Las/Rad/KF/SF %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),numLas);
 		fprintf(outFile,"ERR Las/Rad/KF/SF %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),numLas);
 		fprintf(outFile,"SUM Las/Rad/KF/SF %f %f %f %f %i\n",lasD/(i+1),radD/(i+1),kfD/(i+1),sfD/(i+1),numLas);
@@ -217,6 +271,8 @@ int main(int argc,char* argv[])
 	sfD = sfD/siz;
 	kfD = kfD/siz;
 	printf("Sum Las/Rad/KF/SF %.1f %.1f %.1f %.1f\n",100*lasD,100*radD,100*kfD,100*sfD);
+	//siz = 100;
+	printf("FPs Las/Rad/KF/SF %.1f %.1f %.1f %.1f\n",100.0*laserOutliers/laserMeasurements,100.0*radarOutliers/radarMeasurements,100.0*kalmanOutliers/siz,100.0*switchingOutliers/siz);
 
 	return 0;
 }

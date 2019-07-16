@@ -138,7 +138,6 @@ Object3dDetector::Object3dDetector() {
   /*** pre_trained model ***/
   if (perform_learning == false){
 	  svm_model_ = svm_load_model("pedestrian.model");
-	  if(svm_save_model("pedestrian.modela", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
 	  train_round_ = 1;
   }
   svm_parameter_.degree = 3; // default 3
