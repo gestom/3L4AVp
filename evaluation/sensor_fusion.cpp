@@ -120,7 +120,7 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 	Mat ttx = T*xx;
 	Mat e = ttx-rx;
 
-//	printf("A\n");
+	//	printf("A\n");
 	//calculate error
 	float err = 0;
 	for (int i = 0;i<xi.size();i++){
@@ -128,7 +128,7 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 		yt->push_back(ttx.at<float>(1,i));
 	       	err += sqrt(e.at<float>(0,i)*e.at<float>(0,i)+e.at<float>(1,i)*e.at<float>(1,i));
 //		printf("%.3f %.3f\n",ttx.at<float>(0,i),ttx.at<float>(1,i));
-		printf("AU %.3f %.3f %.3f %.3f\n",ttx.at<float>(0,i),ttx.at<float>(1,i),xi[i]+rxxx,yi[i]+rxxy);
+//		printf("AU %.3f %.3f %.3f %.3f\n",ttx.at<float>(0,i),ttx.at<float>(1,i),xi[i]+rxxx,yi[i]+rxxy);
 	}
 //	printf("B\n");
 
@@ -144,7 +144,7 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 	for (int i = 0;i<nfx.size();i++){
 		nfxt->push_back(nfttx.at<float>(0,i));
 		nfyt->push_back(nfttx.at<float>(1,i));
-		printf("NF %.3f %.3f %.3f %.3f\n",nfttx.at<float>(0,i),nfttx.at<float>(1,i),xi[i]+rxxx,yi[i]+rxxy);
+//		printf("NF %.3f %.3f %.3f %.3f\n",nfttx.at<float>(0,i),nfttx.at<float>(1,i),xi[i]+rxxx,yi[i]+rxxy);
 	}
 //	printf("C\n");
 
@@ -209,6 +209,7 @@ int main(int argc,char* argv[])
 	/*perform transformations*/
 	transformRot(camX,camY,radTX,radTY,radNX,radNY,&radX,&radY,&radNFX,&radNFY);
 	transformRot(camX,camY,lasTX,lasTY,lasNX,lasNY,&lasX,&lasY,&lasNFX,&lasNFY);
+	//return 0;
 
 	float wr,wl,kfX,kfY,radD,lasD,kfD,sfD,sfX,sfY;
 	radD=lasD=sfD=kfD=0;
@@ -254,11 +255,11 @@ int main(int argc,char* argv[])
 		kfD += dist(kfX,kfY,camX[i],camY[i]);
 		sfD += dist(sfX,sfY,camX[i],camY[i]);
 		if (dist(kfX,kfY,camX[i],camY[i]) > outlierDistance){
-			printf("OULIER %i\n",i);
+			//printf("OULIER %i\n",i);
 		       	kalmanOutliers++; 
 		}
 		if (dist(sfX,sfY,camX[i],camY[i]) > outlierDistance){
-			printf("SOULIER %i\n",i);
+			//printf("SOULIER %i\n",i);
 		       	switchingOutliers++; 
 		}
 		//printf("Las/Rad/KF/SF %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),numLas);
