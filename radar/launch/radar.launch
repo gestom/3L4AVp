@@ -13,9 +13,9 @@
     <param name="fixed_frame" type="string" value="laser"/>
   </node>
   
-  <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" output="log" respawn="false">
+  <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" output="screen" respawn="false">
     <param name="print_fps" type="bool" value="false"/>
-    <param name="max_trains" type="int" value="5"/>
+    <param name="max_trains" type="int" value="10"/>
     <param name="round_positives" type="int" value="10"/>
     <param name="round_negatives" type="int" value="10"/>
     <param name="perform_learning" value="$(arg perform_learning)"/>
@@ -38,7 +38,7 @@
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_velodyne" args="0 0 0 0 0 0 map velodyne 100"/>
  
   <!-- Static transform from map to base_radar_link for visualization of stand-alone mmWave sensor using Rviz -->
-  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args="0.08 0.13 0 0 0 0 map base_radar_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args="0.12 -0.05 0 0.2 0 0 map base_radar_link 100"/>
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_laser" args="0 0 0 0 0 0 map laser 100"/>
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_camera_depth_optical_frame" args="0.08 -0.08 0.32 -1.57 0 -1.57  map camera_depth_optical_frame 100"/>
   
