@@ -9,6 +9,6 @@ set ylabel "Average error [m]"
 #set label "Hazy conditions" at 55,0.05
 plot [0:110] [0:0.28] 'sum.tmp' using ($0/30):3 with lines title 'Lidar estimate [m]' lw 2,\
 '' using ($0/30):4 with lines title 'Radar estimate [m]' lw 2,\
-'' using ($0/30):5 with lines title 'Weighting filter [m]' lw 2,\
+'' using ($0/30):5 with lines title 'Weighted filter [m]' lw 2,\
 '' using ($0/30):6 with lines title 'Switching filter [m]' lw 2,\
 #'fog.txt' using 1:2 with lines lt 2 lw 2 lc 0 notitle

@@ -15,4 +15,3 @@ compute all
 compute normal  
 compute haze 
 rm *.tmp
-rm *.fig
