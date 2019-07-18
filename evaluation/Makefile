@@ -20,7 +20,7 @@ depend: .depend
 
 clean:
 	rm -f $(objects)
-	rm -f *.pdf *.fig *.tmp
+	rm -f *.pdf *.fig *.tmp haze.txt normal.txt
 	rm $(appname)
 
 dist-clean: clean
