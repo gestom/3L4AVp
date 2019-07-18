@@ -1,4 +1,4 @@
-head -n 2000 all.txt >normal.txt
+head -n 3600 all.txt >normal.txt
 tail -n 1281 all.txt >haze.txt
 
 function compute()
@@ -13,4 +13,6 @@ function compute()
 make
 compute all
 compute normal  
-compute haze  
+compute haze 
+rm *.tmp
+rm *.fig
