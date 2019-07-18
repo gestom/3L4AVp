@@ -8,8 +8,8 @@
 
 using namespace std;
 using namespace cv;
-float temporalFilter = 0.4;
-float outlierDistance = 0.6;
+float temporalFilter = 0.5;
+float outlierDistance = 0.5;
 
 float outlierFilter(vector<float> *x, vector<float> *y)
 {
@@ -27,7 +27,7 @@ float outlierFilter(vector<float> *x, vector<float> *y)
 		ly = (*y)[i];
 		dx = (*x)[i]-(*x)[i-1];
 		dy = (*y)[i]-(*y)[i-1];
-		if (sqrt(dx*dx+dy*dy) > temporalFilter && trk < 7)
+		if (sqrt(dx*dx+dy*dy) > temporalFilter && trk < 15)
 		{
 			(*x)[i] = (*x)[i-1]; 
 			(*y)[i] = (*y)[i-1];
@@ -35,7 +35,7 @@ float outlierFilter(vector<float> *x, vector<float> *y)
 		}else{
 			trk = 0;
 		}
-		printf("%f %f %f %f %f\n",lx,ly,(*x)[i],(*y)[i],sqrt(dx*dx+dy*dy));
+		//printf("%f %f %f %f %f\n",lx,ly,(*x)[i],(*y)[i],sqrt(dx*dx+dy*dy));
 	}
 	return (float)falsePositives/values;
 }
@@ -47,7 +47,7 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 	float cxxy = 0;
 	float rxxx = 0;
 	float rxxy = 0;
-	printf("%i\n",xi.size());
+	//printf("%i\n",xi.size());
 	Mat A(xi.size(),4,CV_32FC1);
 	Mat b(xi.size(),1,CV_32FC1);
 
@@ -85,7 +85,7 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 	}
 	A = (A.t()*A);
 	cv::SVD svdMat(A);
-	cout << svdMat.w << endl; 	//eigenvalues indicate solution quality
+	//cout << svdMat.w << endl; 	//eigenvalues indicate solution quality
 	cv::SVD::solveZ(A,b);
 
 	//normalize vector so that it points in a correct direction
@@ -106,7 +106,7 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 	T.at<float>(1,1) = a0; 
 	T.at<float>(0,2) = tx-cxxx+a0*rxxx-a1*rxxy; 
 	T.at<float>(1,2) = ty-cxxy+a1*rxxx+a0*rxxy;
-	cout << T << endl;
+	//cout << T << endl;
 
 	//transform the points
 	for (int i = 0;i<xi.size();i++)
@@ -120,7 +120,7 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 	Mat ttx = T*xx;
 	Mat e = ttx-rx;
 
-	//	printf("A\n");
+	//printf("A\n");
 	//calculate error
 	float err = 0;
 	for (int i = 0;i<xi.size();i++){
@@ -128,9 +128,9 @@ void transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<floa
 		yt->push_back(ttx.at<float>(1,i));
 	       	err += sqrt(e.at<float>(0,i)*e.at<float>(0,i)+e.at<float>(1,i)*e.at<float>(1,i));
 //		printf("%.3f %.3f\n",ttx.at<float>(0,i),ttx.at<float>(1,i));
-//		printf("AU %.3f %.3f %.3f %.3f\n",ttx.at<float>(0,i),ttx.at<float>(1,i),xi[i]+rxxx,yi[i]+rxxy);
+		//printf("AU %.3f %.3f %.3f %.3f\n",ttx.at<float>(0,i),ttx.at<float>(1,i),xi[i]+rxxx,yi[i]+rxxy);
 	}
-//	printf("B\n");
+	//printf("B\n");
 
 	//transform second batch of points
 	Mat nfxx(3,nfx.size(),CV_32FC1);
@@ -219,16 +219,16 @@ int main(int argc,char* argv[])
 	numRad=numLas=0;	
 	for (int i = 0;i<camX.size();i++)
 	{
-		if (radNFX[i] == lastRadX && radNFY[i] == lastRadY) numRad++; else numRad = 0; 
-		if (lasNFX[i] == lastLasX && lasNFY[i] == lastLasY) numLas++; else numLas = 0;
-		lastRadX = radNFX[i];
-		lastRadY = radNFY[i];
-		lastLasX = lasNFX[i];
-		lastLasY = lasNFY[i];
+		if (radX[i] == lastRadX && radY[i] == lastRadY) numRad++; else numRad = 0; 
+		if (lasX[i] == lastLasX && lasY[i] == lastLasY) numLas++; else numLas = 0;
+		lastRadX = radX[i];
+		lastRadY = radY[i];
+		lastLasX = lasX[i];
+		lastLasY = lasY[i];
 
 		//gradually inflate covariance in case information is obsolete
 		wr = 1/(radC[i]*(pow(2,numRad)));
-		wl = 3/(lasC[i]*(pow(2,numLas)));
+		wl = 1/(lasC[i]*(pow(2,numLas)));
 
 		//kalman filter
 		kfX = (radX[i]*wr+lasX[i]*wl)/(wr+wl);
@@ -243,15 +243,15 @@ int main(int argc,char* argv[])
 			sfY = lasY[i];
 		}
 		if (numLas == 0){
-			if (dist(lasNFX[i],lasNFY[i],camX[i],camY[i]) > outlierDistance) laserOutliers++; 
+			if (dist(lasX[i],lasY[i],camX[i],camY[i]) > outlierDistance) laserOutliers++; 
 			laserMeasurements++;
 		}
 		if (numRad == 0){
-			if (dist(radNFX[i],radNFY[i],camX[i],camY[i]) > outlierDistance) radarOutliers++; 
+			if (dist(radX[i],radY[i],camX[i],camY[i]) > outlierDistance) radarOutliers++; 
 			radarMeasurements++;
 		}
-		lasD += dist(lasNFX[i],lasNFY[i],camX[i],camY[i]);
-		radD += dist(radNFX[i],radNFY[i],camX[i],camY[i]);
+		lasD += dist(lasX[i],lasY[i],camX[i],camY[i]);
+		radD += dist(radX[i],radY[i],camX[i],camY[i]);
 		kfD += dist(kfX,kfY,camX[i],camY[i]);
 		sfD += dist(sfX,sfY,camX[i],camY[i]);
 		if (dist(kfX,kfY,camX[i],camY[i]) > outlierDistance){
