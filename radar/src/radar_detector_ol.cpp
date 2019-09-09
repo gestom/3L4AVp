@@ -248,6 +248,7 @@ void Object3dDetector::extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc,
     features_.push_back(f);
     //std::cout<<  " Size from Ol extraction " << cluster->size() << std::endl;
     if(train_round_ < max_trains_) {
+      	training_finished.data=false;
       if(type == 1 && positive_ < round_positives_) {
         saveFeature(f, svm_problem_.x[svm_problem_.l]);
         svm_problem_.y[svm_problem_.l++] = 1;
@@ -259,7 +260,6 @@ void Object3dDetector::extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc,
         svm_problem_.y[svm_problem_.l++] = -1;
         ++negative_;
         std::cout << "negative: " << negative_ << std::endl;
-      	training_finished.data=false;
 	}
     }
     if(train_round_ == max_trains_ ){

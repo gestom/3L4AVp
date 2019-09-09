@@ -225,9 +225,9 @@ void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 	for (int i = 0;i<msg->people.size();i++)
 	{
 	//	printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
-		personX = msg->people[1].pos.x;
-		personY = msg->people[1].pos.y;
-		legT = msg->people[1].header.stamp;
+		personX = msg->people[0].pos.x;
+		personY = msg->people[0].pos.y;
+		legT = msg->people[0].header.stamp;
 		lifeLong++;
 	}
 	//printf("\n");
