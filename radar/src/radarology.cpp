@@ -5,6 +5,7 @@
 #include <dynamic_reconfigure/Config.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/LaserScan.h>
+#include <std_msgs/Bool.h>
 #include <radar/radiusConfig.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/voxel_grid.h>
@@ -23,6 +24,7 @@ float clusterRadius=0.5;
 float personDistance=0.5;
 int minClusterSize = 10;
 int lifeLong=0;
+bool training_status = false;
 ros::Subscriber radar_sub_;
 ros::Subscriber laser_sub_;
 ros::Publisher point_positive_pub_;
@@ -30,6 +32,7 @@ ros::Publisher point_negative_pub_;
 ros::Publisher  marker_array_pub_;
 ros::Publisher point_unknown_pub_;
 ros::Subscriber tracker_sub_;
+ros::Subscriber training_status_sub_;
 ros::Time currentT;
 ros::Time legT;
 typedef pcl::PointXYZHSV PointTypeFull;
@@ -110,7 +113,10 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	pcl::IndicesClustersPtr clusters (new pcl::IndicesClusters);
 	pcl::PointCloud<PointTypeFull>::Ptr	cloud_out (new pcl::PointCloud<PointTypeFull>);
 	visualization_msgs::MarkerArray::Ptr markerArray(new visualization_msgs::MarkerArray);
-	
+	if(training_status){
+	point_unknown_pub_.publish(msg);
+	return;
+	} 	
 	//Set up pcl
 	pcl::IndicesPtr pc_indices(new std::vector<int>);
 	pcl::PassThrough<pcl::PointXYZHSV> pt;
@@ -207,6 +213,10 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
 }
+void trainingStatusCallback(const std_msgs::Bool::ConstPtr& msg)
+{
+	training_status = msg->data;
+}
 
 void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 {
@@ -215,9 +225,9 @@ void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 	for (int i = 0;i<msg->people.size();i++)
 	{
 	//	printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
-		personX = msg->people[0].pos.x;
-		personY = msg->people[0].pos.y;
-		legT = msg->people[0].header.stamp;
+		personX = msg->people[1].pos.x;
+		personY = msg->people[1].pos.y;
+		legT = msg->people[1].header.stamp;
 		lifeLong++;
 	}
 	//printf("\n");
@@ -235,6 +245,7 @@ int main(int argc, char **argv) {
   marker_array_pub_   = nh_.advertise<visualization_msgs::MarkerArray>("/person", 1);
   //radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/camera/pointcloud", 1, allRadarCallback);
   radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/radar/RScan", 1, allRadarCallback);
+  training_status_sub_ = nh_.subscribe<std_msgs::Bool>("/radar_detector_ol/training_status", 1, trainingStatusCallback);
   laser_sub_ = nh_.subscribe<sensor_msgs::LaserScan>("/scan", 1, laserCallback);
   tracker_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1, trackerCallback);
   point_positive_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/positive", 100000);

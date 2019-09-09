@@ -1,6 +1,7 @@
 // ROS
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseArray.h>
 #include <visualization_msgs/MarkerArray.h>
 // PCL
@@ -45,13 +46,14 @@ private:
   ros::Subscriber point_cloud_ukn_sub_;
   ros::Publisher  pose_array_pub_;
   ros::Publisher  marker_array_pub_;
-  
+  ros::Publisher  training_status_pub_;
   /*** Parameters ***/
   bool print_fps_;
   std::string frame_id_;
   float cluster_tolerance_;
   int cluster_size_min_;
   int cluster_size_max_;
+  bool training_finished;
   
   /*** SVM ***/
   std::vector<Feature> features_;
@@ -94,7 +96,8 @@ Object3dDetector::Object3dDetector() {
   ros::NodeHandle private_nh("~");
   pose_array_pub_     = private_nh.advertise<geometry_msgs::PoseArray>("poses", 1);
   marker_array_pub_   = private_nh.advertise<visualization_msgs::MarkerArray>("markers", 1);
-  
+  training_status_pub_ = private_nh.advertise<std_msgs::Bool>("training_status",1);
+ 
   /*** Parameters ***/
   private_nh.param<bool>("print_fps", print_fps_, false);
   private_nh.param<std::string>("frame_id", frame_id_, "base_radar_link");
@@ -218,6 +221,7 @@ void Object3dDetector::extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc,
   pcl::search::KdTree<pcl::PointXYZHSV>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZHSV>);
   tree->setInputCloud(pc);
   
+  std_msgs::Bool training_finished;
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZHSV> ec;
   /******* TODO: rqt_reconfigure *******/
@@ -255,8 +259,13 @@ void Object3dDetector::extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc,
         svm_problem_.y[svm_problem_.l++] = -1;
         ++negative_;
         std::cout << "negative: " << negative_ << std::endl;
-      }
+      	training_finished.data=false;
+	}
     }
+    if(train_round_ == max_trains_ ){
+	training_finished.data = true;
+    }
+    training_status_pub_.publish(training_finished); 
   }
 }
 
