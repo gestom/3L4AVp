@@ -458,7 +458,6 @@ void Object3dDetector::classify(int type) {
 	  if(type == 1)
 	  {
 		  svm_find_human = true;
-		  continue;
 	  }
 	  else
 	  {

@@ -36,6 +36,8 @@ typedef pcl::PointXYZHSV PointTypeFull;
 typedef pcl::PointCloud<PointTypeFull> PointCloud;
 float personX,personY;
 PointCloud::Ptr pcl_msg (new PointCloud);
+PointCloud::Ptr pcl_msg_unk (new PointCloud);
+
 
 void callback(radar::radiusConfig &config, uint32_t level) {
 	
@@ -126,6 +128,10 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	cec.segment (*clusters);
 	//std::cerr << ">> Done: " << tt.toc () << " ms\n";
 	//printf("Clusters size: %i: ",clusters->size());
+	pcl_msg_unk->header.frame_id = "laser";
+	pcl_msg_unk->height = 1;
+	pcl_msg_unk->width = 0;
+	pcl_msg_unk->points.clear();
 
 	currentT = ros::Time::now();
 	int positives = 0;
@@ -172,8 +178,10 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 			pcl_msg->width++;
 		}
 		if((lifeLong <10) ||((currentT-legT)>ros::Duration(1.0))){
-			point_unknown_pub_.publish(pcl_msg);
-			fprintf(stdout,"Publishing unknown\n");
+			for (int j = 0; j <(int)((*clusters)[i]).indices.size(); ++j){
+				pcl_msg_unk->points.push_back (pcl_pc->points[(*clusters)[i].indices[j]]);
+				pcl_msg_unk->width++;	
+			}
 		}else{
 			if (sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)) > personDistance)
 			{
@@ -187,8 +195,11 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		}
 
 	}
-
-
+	
+	if(pcl_msg_unk->points.size()){
+	point_unknown_pub_.publish(pcl_msg_unk);
+	fprintf(stdout,"Publishing unknown\n");
+	}
 	//printf("\n Positives: %i\n",positives);
 	marker_array_pub_.publish(markerArray);
 }
