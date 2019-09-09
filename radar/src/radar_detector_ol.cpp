@@ -15,6 +15,8 @@
 // SVM
 #include "svm.h"
 
+#include <boost/algorithm/string.hpp> 
+
 typedef struct feature {
   /*** for visualization ***/
   Eigen::Vector4f centroid;
@@ -68,7 +70,7 @@ private:
   int max_trains_;
   int train_round_;
   std::vector<double> clusters_probability_;
-  bool find_the_best_training_parameters_;
+  bool perform_learning;
   
 public:
   Object3dDetector();
@@ -82,8 +84,9 @@ public:
   void extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc, int type);
   void extractFeature(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc, Feature &f);
   void saveFeature(Feature &f, struct svm_node *x);
-  void classify();
+  void classify(int type);
   void train();
+  void loadFromFile();
 };
 
 Object3dDetector::Object3dDetector() {
@@ -95,14 +98,14 @@ Object3dDetector::Object3dDetector() {
   /*** Parameters ***/
   private_nh.param<bool>("print_fps", print_fps_, false);
   private_nh.param<std::string>("frame_id", frame_id_, "base_radar_link");
-  private_nh.param<float>("cluster_tolerance", cluster_tolerance_, 0.5);
-  private_nh.param<int>("cluster_size_min", cluster_size_min_, 3);
+  private_nh.param<float>("cluster_tolerance", cluster_tolerance_, 0.3);
+  private_nh.param<int>("cluster_size_min", cluster_size_min_, 8);
   private_nh.param<int>("cluster_size_max", cluster_size_max_, 300);
   private_nh.param<float>("human_probability", human_probability_, 0.5);
-  private_nh.param<int>("round_positives", round_positives_, 10);
-  private_nh.param<int>("round_negatives", round_negatives_, 10);
+  private_nh.param<int>("round_positives", round_positives_, 12);
+  private_nh.param<int>("round_negatives", round_negatives_, 12);
   private_nh.param<int>("max_trains", max_trains_, 3);
-  private_nh.param<bool>("find_the_best_training_parameters", find_the_best_training_parameters_, true);
+  private_nh.param<bool>("perform_learning", perform_learning, true);
   
   /*** SVM ***/
   svm_node_ = (struct svm_node *)malloc((FEATURE_SIZE+1)*sizeof(struct svm_node)); // 1 more size for end index (-1)
@@ -134,11 +137,35 @@ Object3dDetector::Object3dDetector() {
   train_round_ = 0;
   positive_ = 0;
   negative_ = 0;
+
+  //perform_learning = false;
+  /*** pre_trained model ***/
+  if (perform_learning == false){
+	  // svm_model_ = svm_load_model("pedestrian.model");
+	  // if(svm_save_model("pedestrian.modela", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
+	  // train_round_ = 1;
+	  loadFromFile();
+  }
+  svm_parameter_.degree = 3; // default 3
+  svm_parameter_.gamma = 0.02; // default 1.0/(float)FEATURE_SIZE
+  svm_parameter_.coef0 = 0; // default 0
+  svm_parameter_.cache_size = 256; // default 100
+  svm_parameter_.eps = 0.001; // default 0.001
+  svm_parameter_.C = 8; // default 1
+  svm_parameter_.nr_weight = 0;
+  svm_parameter_.weight_label = NULL;
+  svm_parameter_.weight = NULL;
+  svm_parameter_.nu = 0.5;
+  svm_parameter_.p = 0.1;
+  svm_parameter_.shrinking = 0;
+  svm_parameter_.probability = 1;
+
   
   /*** Subscribers ***/
   point_cloud_pos_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("positive", 100, &Object3dDetector::pointCloudPosCallback, this);
   point_cloud_neg_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("negative", 100, &Object3dDetector::pointCloudNegCallback, this);
   point_cloud_ukn_sub_ = node_handle_.subscribe<sensor_msgs::PointCloud2>("unknown", 100, &Object3dDetector::pointCloudUknCallback, this);
+ 
 }
 
 Object3dDetector::~Object3dDetector() {
@@ -159,8 +186,8 @@ void Object3dDetector::pointCloudPosCallback(const sensor_msgs::PointCloud2::Con
   pcl::fromROSMsg(*ros_pc2, *pcl_pc);
   
   extractCluster(pcl_pc, 1); // 1 means positive examples
-  classify();
-  train();
+  classify(1); // 1 means positive examples
+  if (perform_learning) train();
   
   if(print_fps_)if(++frames>10){std::cout<<"[radar_detector_ol]: fps = "<<float(frames)/(float(clock()-start_time)/CLOCKS_PER_SEC)<<", timestamp = "<<clock()/CLOCKS_PER_SEC<<", positive = "<<positive_<<", negative = "<<negative_<<std::endl;reset = true;}//fps
 }
@@ -172,7 +199,8 @@ void Object3dDetector::pointCloudUknCallback(const sensor_msgs::PointCloud2::Con
   pcl::fromROSMsg(*ros_pc2, *pcl_pc);
   
   extractCluster(pcl_pc, 0); // 0 means unknown examples passed for classification
-  classify();
+  classify(0); // 0 means unknown examples passed for classification
+  fprintf(stdout,"Classifying unknown\n");
   
   if(print_fps_)if(++frames>10){std::cout<<"[radar_detector_ol]: fps = "<<float(frames)/(float(clock()-start_time)/CLOCKS_PER_SEC)<<", timestamp = "<<clock()/CLOCKS_PER_SEC<<", positive = "<<positive_<<", negative = "<<negative_<<std::endl;reset = true;}//fps
 }
@@ -200,11 +228,12 @@ void Object3dDetector::extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc,
   ec.setSearchMethod(tree);
   ec.setInputCloud(pc);
   ec.extract(cluster_indices);
-  
+   
   for(std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); it++) {
     pcl::PointCloud<pcl::PointXYZHSV>::Ptr cluster(new pcl::PointCloud<pcl::PointXYZHSV>);
     for(std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit) {
       cluster->points.push_back(pc->points[*pit]);
+//	std::cout << "Indices ol " <<   it->indices.size() << std::endl; 
     }
     cluster->width = cluster->size();
     cluster->height = 1;
@@ -213,7 +242,7 @@ void Object3dDetector::extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc,
     Feature f;
     extractFeature(cluster, f);
     features_.push_back(f);
-  
+    //std::cout<<  " Size from Ol extraction " << cluster->size() << std::endl;
     if(train_round_ < max_trains_) {
       if(type == 1 && positive_ < round_positives_) {
         saveFeature(f, svm_problem_.x[svm_problem_.l]);
@@ -227,10 +256,10 @@ void Object3dDetector::extractCluster(pcl::PointCloud<pcl::PointXYZHSV>::Ptr pc,
         ++negative_;
         std::cout << "negative: " << negative_ << std::endl;
       }
-    } 
+    }
   }
-}    
-  
+}
+
 /* *** Feature Extraction ***
  * f1 (1d): the number of points included in a cluster.
  * f2 (1d): the minimum distance of the cluster to the sensor.
@@ -419,100 +448,111 @@ void Object3dDetector::saveFeature(Feature &f, struct svm_node *x) {
   /****** Debug print ******/
 }
 
-void Object3dDetector::classify() {
+void Object3dDetector::classify(int type) {
   geometry_msgs::PoseArray pose_array;
   visualization_msgs::MarkerArray marker_array;
   
   for(std::vector<Feature>::iterator it = features_.begin(); it != features_.end(); it++) {
-    bool svm_find_human = false;
-    
-    if(train_round_ > 0) {
-      /*** scale data ***/
-      saveFeature(*it, svm_node_);
-      for(int i = 0; i < FEATURE_SIZE; i++) {
-    	if(svm_range_[i][0] == svm_range_[i][1]) {
-    	  continue;
-	}
-    	if(svm_node_[i].value == svm_range_[i][0]) {
-    	  svm_node_[i].value = svm_xlower_;
-	} else if(svm_node_[i].value == svm_range_[i][1]) {
-    	  svm_node_[i].value = svm_xupper_;
-	} else {
-    	  svm_node_[i].value = svm_xlower_ + (svm_xupper_ - svm_xlower_) * (svm_node_[i].value - svm_range_[i][0]) / (svm_range_[i][1] - svm_range_[i][0]);
-	}
-      }
-      
-      /*** predict ***/
-      if(svm_check_probability_model(svm_model_)) {
-    	double prob_estimates[svm_model_->nr_class];
-    	svm_predict_probability(svm_model_, svm_node_, prob_estimates);
-    	clusters_probability_.push_back(prob_estimates[0]);
-    	if(prob_estimates[0] > human_probability_) {
-    	  svm_find_human = true;
-	}
-      } else {
-    	if(svm_predict(svm_model_, svm_node_) == 1)
-    	  svm_find_human = true;
-      }
-    }
-    
-    /*** cluster pose ***/
-    geometry_msgs::Pose pose;
-    pose.position.x = it->centroid[0];
-    pose.position.y = it->centroid[1];
-    pose.position.z = it->centroid[2];
-    pose.orientation.w = 1;
-    pose_array.poses.push_back(pose);
-    
-    /*** bounding box ***/
-    visualization_msgs::Marker marker;
-    marker.header.stamp = ros::Time::now();
-    marker.header.frame_id = frame_id_;
-    marker.ns = "radar_detector_ol";
-    marker.id = it-features_.begin();
-    marker.type = visualization_msgs::Marker::LINE_LIST;
-    geometry_msgs::Point p[24];
-    p[0].x = it->max[0]; p[0].y = it->max[1]; p[0].z = it->max[2];
-    p[1].x = it->min[0]; p[1].y = it->max[1]; p[1].z = it->max[2];
-    p[2].x = it->max[0]; p[2].y = it->max[1]; p[2].z = it->max[2];
-    p[3].x = it->max[0]; p[3].y = it->min[1]; p[3].z = it->max[2];
-    p[4].x = it->max[0]; p[4].y = it->max[1]; p[4].z = it->max[2];
-    p[5].x = it->max[0]; p[5].y = it->max[1]; p[5].z = it->min[2];
-    p[6].x = it->min[0]; p[6].y = it->min[1]; p[6].z = it->min[2];
-    p[7].x = it->max[0]; p[7].y = it->min[1]; p[7].z = it->min[2];
-    p[8].x = it->min[0]; p[8].y = it->min[1]; p[8].z = it->min[2];
-    p[9].x = it->min[0]; p[9].y = it->max[1]; p[9].z = it->min[2];
-    p[10].x = it->min[0]; p[10].y = it->min[1]; p[10].z = it->min[2];
-    p[11].x = it->min[0]; p[11].y = it->min[1]; p[11].z = it->max[2];
-    p[12].x = it->min[0]; p[12].y = it->max[1]; p[12].z = it->max[2];
-    p[13].x = it->min[0]; p[13].y = it->max[1]; p[13].z = it->min[2];
-    p[14].x = it->min[0]; p[14].y = it->max[1]; p[14].z = it->max[2];
-    p[15].x = it->min[0]; p[15].y = it->min[1]; p[15].z = it->max[2];
-    p[16].x = it->max[0]; p[16].y = it->min[1]; p[16].z = it->max[2];
-    p[17].x = it->max[0]; p[17].y = it->min[1]; p[17].z = it->min[2];
-    p[18].x = it->max[0]; p[18].y = it->min[1]; p[18].z = it->max[2];
-    p[19].x = it->min[0]; p[19].y = it->min[1]; p[19].z = it->max[2];
-    p[20].x = it->max[0]; p[20].y = it->max[1]; p[20].z = it->min[2];
-    p[21].x = it->min[0]; p[21].y = it->max[1]; p[21].z = it->min[2];
-    p[22].x = it->max[0]; p[22].y = it->max[1]; p[22].z = it->min[2];
-    p[23].x = it->max[0]; p[23].y = it->min[1]; p[23].z = it->min[2];
-    for(int i = 0; i < 24; i++) {
-      marker.points.push_back(p[i]);
-    }
-    marker.scale.x = 0.02;
-    marker.color.a = 1.0;
-    if(svm_find_human) {
-      marker.color.r = 0.0;
-      marker.color.g = 1.0;
-      marker.color.b = 0.5;
-      marker.lifetime = ros::Duration(0.1);
-      marker_array.markers.push_back(marker);
-    } else {
-      marker.color.r = 0.0;
-      marker.color.g = 0.5;
-      marker.color.b = 1.0;
-    
-    }
+	  bool svm_find_human = false;
+
+	  if(type == 1)
+	  {
+		  svm_find_human = true;
+		  continue;
+	  }
+	  else
+	  {
+
+		  if(train_round_ > 0) {
+			  /*** scale data ***/
+			  saveFeature(*it, svm_node_);
+			  for(int i = 0; i < FEATURE_SIZE; i++) {
+				  if(svm_range_[i][0] == svm_range_[i][1]) {
+					  continue;
+				  }
+				  if(svm_node_[i].value == svm_range_[i][0]) {
+					  svm_node_[i].value = svm_xlower_;
+				  } else if(svm_node_[i].value == svm_range_[i][1]) {
+					  svm_node_[i].value = svm_xupper_;
+				  } else {
+					  svm_node_[i].value = svm_xlower_ + (svm_xupper_ - svm_xlower_) * (svm_node_[i].value - svm_range_[i][0]) / (svm_range_[i][1] - svm_range_[i][0]);
+				  }
+			  }
+
+			  /*** predict ***/
+			  if(svm_check_probability_model(svm_model_)) {
+				  double prob_estimates[svm_model_->nr_class];
+				  svm_predict_probability(svm_model_, svm_node_, prob_estimates);
+				  clusters_probability_.push_back(prob_estimates[0]);
+				  if(prob_estimates[0] > human_probability_) {
+					  svm_find_human = true;
+				  }
+			  } else {
+				  if(svm_predict(svm_model_, svm_node_) == 1)
+					  svm_find_human = true;
+			  }
+		  }
+	  }
+
+	  /*** cluster pose ***/
+	  geometry_msgs::Pose pose;
+	  pose.position.x = it->centroid[0];
+	  pose.position.y = it->centroid[1];
+	  pose.position.z = it->centroid[2];
+	  pose.orientation.w = 1;
+
+	  /*** bounding box ***/
+	  visualization_msgs::Marker marker;
+	  marker.header.stamp = ros::Time::now();
+	  marker.header.frame_id = frame_id_;
+	  marker.ns = "radar_detector_ol";
+	  marker.id = it-features_.begin();
+	  marker.type = visualization_msgs::Marker::LINE_LIST;
+	  geometry_msgs::Point p[24];
+	  p[0].x = it->max[0]; p[0].y = it->max[1]; p[0].z = it->max[2];
+	  p[1].x = it->min[0]; p[1].y = it->max[1]; p[1].z = it->max[2];
+	  p[2].x = it->max[0]; p[2].y = it->max[1]; p[2].z = it->max[2];
+	  p[3].x = it->max[0]; p[3].y = it->min[1]; p[3].z = it->max[2];
+	  p[4].x = it->max[0]; p[4].y = it->max[1]; p[4].z = it->max[2];
+	  p[5].x = it->max[0]; p[5].y = it->max[1]; p[5].z = it->min[2];
+	  p[6].x = it->min[0]; p[6].y = it->min[1]; p[6].z = it->min[2];
+	  p[7].x = it->max[0]; p[7].y = it->min[1]; p[7].z = it->min[2];
+	  p[8].x = it->min[0]; p[8].y = it->min[1]; p[8].z = it->min[2];
+	  p[9].x = it->min[0]; p[9].y = it->max[1]; p[9].z = it->min[2];
+	  p[10].x = it->min[0]; p[10].y = it->min[1]; p[10].z = it->min[2];
+	  p[11].x = it->min[0]; p[11].y = it->min[1]; p[11].z = it->max[2];
+	  p[12].x = it->min[0]; p[12].y = it->max[1]; p[12].z = it->max[2];
+	  p[13].x = it->min[0]; p[13].y = it->max[1]; p[13].z = it->min[2];
+	  p[14].x = it->min[0]; p[14].y = it->max[1]; p[14].z = it->max[2];
+	  p[15].x = it->min[0]; p[15].y = it->min[1]; p[15].z = it->max[2];
+	  p[16].x = it->max[0]; p[16].y = it->min[1]; p[16].z = it->max[2];
+	  p[17].x = it->max[0]; p[17].y = it->min[1]; p[17].z = it->min[2];
+	  p[18].x = it->max[0]; p[18].y = it->min[1]; p[18].z = it->max[2];
+	  p[19].x = it->min[0]; p[19].y = it->min[1]; p[19].z = it->max[2];
+	  p[20].x = it->max[0]; p[20].y = it->max[1]; p[20].z = it->min[2];
+	  p[21].x = it->min[0]; p[21].y = it->max[1]; p[21].z = it->min[2];
+	  p[22].x = it->max[0]; p[22].y = it->max[1]; p[22].z = it->min[2];
+	  p[23].x = it->max[0]; p[23].y = it->min[1]; p[23].z = it->min[2];
+	  for(int i = 0; i < 24; i++) {
+		  marker.points.push_back(p[i]);
+	  }
+	  marker.scale.x = 0.02;
+	  marker.color.a = 1.0;
+	  if(svm_find_human) {
+		  marker.color.r = 0.0;
+		  marker.color.g = 1.0;
+		  marker.color.b = 0.5;
+		  marker.lifetime = ros::Duration(0.1);
+		  pose_array.poses.push_back(pose);
+		  marker_array.markers.push_back(marker);
+	  } else {
+		  marker.color.r = 0.0;
+		  marker.color.g = 0.5;
+		  marker.color.b = 1.0;
+		  marker.lifetime = ros::Duration(0.1);
+		  //marker_array.markers.push_back(marker);
+
+	  }
   }
   
   /*** publish pose and marker ***/
@@ -528,8 +568,13 @@ void Object3dDetector::classify() {
 }
 
 void Object3dDetector::train() {
+
+	printf("%i %i %i %i\n", positive_, negative_, round_positives_, round_negatives_);
   if((positive_+negative_) < (round_positives_+round_negatives_))
-    return;
+  {
+	  printf("Not enough data for training, aborting\n");
+	  return;
+  }
   
   clock_t t = clock();
   std::cout << "\n****** Training round " << (train_round_+1) << " started ******\n" << std::endl;
@@ -585,8 +630,6 @@ void Object3dDetector::train() {
   }
   
   /*** train ***/
-  if(find_the_best_training_parameters_) {
-    std::ofstream s;
     s.open("svm_training_data");
     for(int i = 0; i < svm_problem_.l; i++) {
       s << svm_problem_.y[i];
@@ -613,9 +656,8 @@ void Object3dDetector::train() {
       }
       pclose(fp);
     }
-  }
   svm_model_ = svm_train(&svm_problem_, &svm_parameter_);
-  
+
   /*** reset parameters ***/
   if(train_round_ < max_trains_) {
     train_round_++;
@@ -624,10 +666,40 @@ void Object3dDetector::train() {
   }
   clusters_probability_.clear();
   
+  if(svm_save_model("pedestrian.model", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
   /*** debug saving ***/
-  // if(svm_save_model("pedestrian.model", svm_model_) == 0)
-  //   std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
   std::cout << "\n****** Training round " << train_round_ << " finished with " << float(clock()-t)/CLOCKS_PER_SEC << " seconds ******\n" << std::endl;
+}
+
+void Object3dDetector::loadFromFile()
+{
+	printf("here\n");
+	std::ifstream input("svm_training_data");
+	int ctr = 0;
+	for(std::string line; getline(input, line);)
+	{
+		std::vector<std::string> tokens;
+		boost::split(tokens, line, boost::is_any_of(" "));
+
+		std::istringstream is(line);
+
+		is >> svm_problem_.y[ctr];
+
+		if(svm_problem_.y[ctr] == 1)
+			positive_++;
+		else
+			negative_++;
+
+		for(int i = 0; i < 62; i++)
+		{
+			is >> svm_problem_.x[ctr][i].value;
+			svm_problem_.x[ctr][i].index = i;
+		}
+
+		ctr++;
+	}
+	svm_problem_.l = ctr;
+	train();
 }
 
 int main(int argc, char **argv) {

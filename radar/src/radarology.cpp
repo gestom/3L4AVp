@@ -131,7 +131,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	int positives = 0;
 	for (int i = 0; i < clusters->size (); ++i)
 	{
-		//printf("\n Cluster size %i ",((*clusters)[i]).indices.size());
+		//cout <<  "Cluster size from radar "  << clusters->size() << endl;
 		//cout << endl;
 		float meanX=0;
 		float meanY=0;
@@ -171,9 +171,10 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 			pcl_msg->points.push_back (pcl_pc->points[(*clusters)[i].indices[j]]);
 			pcl_msg->width++;
 		}
-		if((currentT-legT)>ros::Duration(1.0)){
+		if((lifeLong <10) ||((currentT-legT)>ros::Duration(1.0))){
 			point_unknown_pub_.publish(pcl_msg);
-		}else if(lifeLong >=10) {
+			fprintf(stdout,"Publishing unknown\n");
+		}else{
 			if (sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)) > personDistance)
 			{
 				point_negative_pub_.publish (pcl_msg);

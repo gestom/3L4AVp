@@ -200,9 +200,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 			if(j > 350||j < 20 || i < 10 || i > 570)  cv_ptr->image.at<float>(j,i) = 0; 
 			if((cv_ptr->image.at<float>(j,i) > 700) &&  (cv_ptr->image.at<float>(j,i) < 3100)){
 
-				z +=  cv_ptr->image.at<float>(j,i)*0.001;        
-				x +=  (cv_ptr->image.at<float>(j,i)*0.001) * ((i - 312.463) * (1/628.008));
-				y +=  (cv_ptr->image.at<float>(j,i)*0.001) * ((j - 242.325) * (1/628.008));
+				z +=  cv_ptr->image.at<float>(j,i)*0.00082;        
+				x +=  (cv_ptr->image.at<float>(j,i)*0.00082) * ((i - 312.463) * (1.06/0.82/628.008));
+				y +=  (cv_ptr->image.at<float>(j,i)*0.00082) * ((j - 242.325) * (1.06/0.82/628.008));
 				numPoints++;
 			} else{ 
 				cv_ptr->image.at<float>(j,i) = 0;
@@ -254,8 +254,8 @@ void infoCallback(const sensor_msgs::CameraInfoPtr& msg){
 	info_pub_.publish(msg);
 }
 
-void radarPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg){
-
+void radarPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg)
+{
 	personRadx=msg->poses[0].position.x;
 	personRady=msg->poses[0].position.y;
 	
