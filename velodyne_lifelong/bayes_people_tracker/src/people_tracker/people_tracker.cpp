@@ -658,6 +658,90 @@ void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &p
     }
   }
 }
+void PeopleTracker::detectorDeepCallback(const geometry_msgs::PoseArray::ConstPtr &pta, std::string detector) {
+  // /////////////////////////////////////////////////////////////
+  // std::cerr << "[people_tacker] got " << pta->poses.size() << " :";
+  // for(int i = 0; i < pta->poses.size(); i++) {
+  //   std::cerr << " " << pta->poses[i].position.z;
+  // }
+  // std::cerr << std::endl;
+  // /////////////////////////////////////////////////////////////      
+  
+  
+#ifdef ONLINE_LEARNING
+  double tmp[pta->poses.size()];
+  for(int i = 0; i < pta->poses.size(); ++i)
+    tmp[i] = pta->poses[i].position.z;
+#endif
+  
+  // Publish an empty message to trigger callbacks even when there are no detections.
+  // This can be used by nodes which might also want to know when there is no human detected.
+  if(pta->poses.size() == 0) {
+    bayes_people_tracker::PeopleTracker empty;
+    empty.header.stamp = ros::Time::now();
+    empty.header.frame_id = target_frame;
+    empty.header.seq = ++detect_seq;
+    publishDetections(empty);
+    return;
+  }
+  
+  geometry_msgs::Pose robotPoseInTargetCoords;
+  
+  std::vector<geometry_msgs::Point> ppl;
+  for(int i = 0; i < pta->poses.size(); i++) {
+    geometry_msgs::Pose pt = pta->poses[i];
+    
+    //Create stamped pose for tf
+    geometry_msgs::PoseStamped poseInCamCoords;
+    geometry_msgs::PoseStamped poseInTargetCoords;
+    poseInCamCoords.header = pta->header;
+    poseInCamCoords.pose = pt;
+    
+    //Transform
+    try {
+      // Transform into given traget frame. Default /map
+      ROS_DEBUG("Transforming received position into %s coordinate system.", target_frame.c_str());
+      listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(1.0));
+      listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);
+      
+      // @todo use http://wiki.ros.org/pose_publisher
+      tf::StampedTransform transform;
+      listener->lookupTransform(target_frame, base_link, ros::Time(0), transform);
+      robotPoseInTargetCoords.position.x = transform.getOrigin().getX();
+      robotPoseInTargetCoords.position.y = transform.getOrigin().getY();
+      robotPoseInTargetCoords.position.z = transform.getOrigin().getZ();
+      robotPoseInTargetCoords.orientation.x = transform.getRotation().getX();
+      robotPoseInTargetCoords.orientation.y = transform.getRotation().getY();
+      robotPoseInTargetCoords.orientation.z = transform.getRotation().getZ();
+      robotPoseInTargetCoords.orientation.w = transform.getRotation().getW();
+      //std::cerr << robotPoseInTargetCoords << std::endl;
+    }
+    catch(tf::TransformException ex) {
+      ROS_WARN("Failed transform: %s", ex.what());
+      return;
+    }
+    
+    //poseInTargetCoords.pose.position.z = 0.0; //@todo check if it can be removed.
+    ppl.push_back(poseInTargetCoords.pose.position);
+  }
+  
+#ifdef ONLINE_LEARNING
+  for(int i = 0; i < ppl.size(); ++i)
+    ppl[i].z = tmp[i];
+#endif
+  
+  if(ppl.size()) {
+    if(ekf == NULL) {
+      if(ukf == NULL) {
+	pf->addObservation(detector, ppl, pta->header.stamp.toSec(), robotPoseInTargetCoords);
+      } else {
+	ukf->addObservation(detector, ppl, pta->header.stamp.toSec(), robotPoseInTargetCoords);
+      }
+    } else {
+      ekf->addObservation(detector, ppl, pta->header.stamp.toSec(), robotPoseInTargetCoords);
+    }
+  }
+}
 
 // Connection callback that unsubscribes from the tracker if no one is subscribed.
 void PeopleTracker::connectCallback(ros::NodeHandle &n) {
@@ -678,7 +762,11 @@ void PeopleTracker::connectCallback(ros::NodeHandle &n) {
   } else {
     ROS_DEBUG("Pedestrian Localisation: New subscribers. Subscribing.");
     for(it = subscribers.begin(); it != subscribers.end(); ++it)
+	if(it->first.second.compare("/deep_radar/out/clustering") == 0){
+      subscribers[it->first] = n.subscribe<geometry_msgs::PoseArray>(it->first.second.c_str(), 1000, boost::bind(&PeopleTracker::detectorDeepCallback, this, _1, it->first.first));
+	}else{
       subscribers[it->first] = n.subscribe<geometry_msgs::PoseArray>(it->first.second.c_str(), 1000, boost::bind(&PeopleTracker::detectorCallback, this, _1, it->first.first));
+	}
   }
 }
 
