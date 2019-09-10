@@ -304,8 +304,8 @@ int main(int argc,char* argv[])
 		       	switchingDeepOutliers++; 
 		}
 		//printf("Las/Rad/KF/SF %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),numLas);
-		fprintf(outFile,"ERR Las/Rad/KF/SF/Deep/KFD/SFD %f %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),dist(deepX[i],deepY[i],camX[i],camY[i]),dist(kfdX,kfdY,camX[i],camY[i]),dist(sfdX,sfdY,camX[i],camY[i]),numLas);
-		fprintf(outFile,"SUM Las/Rad/KF/SF/Deep %f %f %f %f %f %i\n",lasD/(i+1),radD/(i+1),kfD/(i+1),sfD/(i+1),deepD/(i+1),numLas);
+		fprintf(outFile,"ERR Las/Rad/KF/SF/Deep/KFD/SFD %f %f %f %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),dist(deepX[i],deepY[i],camX[i],camY[i]),dist(kfdX,kfdY,camX[i],camY[i]),dist(sfdX,sfdY,camX[i],camY[i]),numLas);
+		fprintf(outFile,"SUM Las/Rad/KF/SF/Deep %f %f %f %f %f %f %f %i\n",lasD/(i+1),radD/(i+1),kfD/(i+1),sfD/(i+1),deepD/(i+1),kfdD/(i+1),sfdD/(i+1),numLas);
 	}
 	int siz = camX.size();
 	lasD = lasD/siz;
