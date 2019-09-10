@@ -283,16 +283,13 @@ void PeopleTracker::trackingThread() {
 	pub_trajectory_acc.publish(trajectory_acc);
       }
 
-      /* FIDEL fill it here */
-      /*
-       *if(pub_deep_trajectory_acc.getNumSubscribers()) {
+      if(pub_deep_trajectory_acc.getNumSubscribers()) {
 		geometry_msgs::PoseArray deep_trajectory_acc;
 		deep_trajectory_acc.header.stamp = ros::Time::now();
 	  	deep_trajectory_acc.header.frame_id = target_frame;
 		deep_trajectory_acc.poses = vars;
 		pub_deep_trajectory_acc.publish(deep_trajectory_acc);
-	    }
-      */
+      }		
 
 
       
