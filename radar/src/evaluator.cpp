@@ -289,10 +289,10 @@ void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
 	
 }
 
-void deepPoseCallback(const visualization_msgs::MarkerConstPtr& msg){
+void deepPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg){
 
-	personDeepx = msg->pose.position.x;
-	personDeepy = msg->pose.position.y;
+	personDeepx = msg->poses[0].position.x;
+	personDeepy = msg->poses[0].position.y;
 	//personDeepx=msg->points[0].x;
  	//personDeepy=msg->points[0].y;
 	//cout << "Covariance Leg " << covL << endl;
@@ -326,7 +326,7 @@ int main(int argc, char **argv)
 	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
 	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/deep/trajectory_acc",1,varianceDeepCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
-	deep_radar_sub_ = nh_.subscribe<visualization_msgs::Marker>("/deep_radar/out/clustering",1, deepPoseCallback); 
+	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/deep_radar/out/clustering",1, deepPoseCallback); 
 
 
 	ros::spin();
