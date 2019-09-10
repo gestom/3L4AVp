@@ -21,7 +21,7 @@ boost::shared_ptr<image_transport::ImageTransport> it_;
 image_transport::Subscriber sub_depth_;
 image_transport::Publisher depth_pub_;
 ros::Publisher info_pub_;
-ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_, deep_radar_sub_;
+ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_,variance_deep_sub_, deep_radar_sub_;
 float fy,fx,cx,cy;
 float personRadx;
 float personRady;
@@ -31,6 +31,14 @@ float personLegx;
 float personLegy;
 float personDeepx;
 float personDeepy;
+float personRadxx;
+float personRadyy;
+float personCamxx;
+float personCamyy;
+float personLegxx;
+float personLegyy;
+float personDeepxx;
+float personDeepyy;
 int numofDetection;
 float totalDistR;
 float totalDistL;
@@ -38,6 +46,10 @@ ros::Time timestampS;
 int numOfCycles=0;
 float covL=0.1;
 float covR=0.1;
+float covLL=0.1;
+float covRR=0.1;
+float covD = 0.1;
+float covDD = 0.1;
 float realX;
 float realY;
 
@@ -223,7 +235,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 		
 		//covL=msg->people[0].covariance[0];
 		//cout << "Covariance Leg " << covL << endl;
-		cout<< "Cam/Rad/Leg/Deep " << personCamx << " " << personCamy << " " << personRadx << " " << personRady << " " << covR << " " <<  personLegx << " " << personLegy << " " << covL <<  " " << personDeepx << " " << personDeepy <<endl;
+		cout<< "Cam/Rad/Leg/Deep " << personCamx << " " << personCamy << " " << personRadx << " " << personRady << " " << covR << " " <<  personLegx << " " << personLegy << " " << covL <<  " " << personDeepx << " " << personDeepy << " " << covD << endl;
 		//cout<< " Leg/Rad filter " << realX << " " << realY << endl; 
 		//Computing distances
 		float distRC=0;
@@ -270,6 +282,9 @@ void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
  	personLegy=msg->people[0].pos.y;
 	covL=msg->people[0].covariance[0];
 	//cout << "Covariance Leg " << covL << endl;
+	personLegxx=msg->people[1].pos.x;
+ 	personLegyy=msg->people[1].pos.y;
+	covLL=msg->people[1].covariance[0];
 	}
 	
 }
@@ -287,9 +302,14 @@ void deepPoseCallback(const visualization_msgs::MarkerConstPtr& msg){
 void varianceCallback(const geometry_msgs::PoseArrayConstPtr& msg){
 
 	covR=msg->poses[0].position.x;
-	//cout<<"Covariance Radar " << covR << endl;
+	covRR=msg->poses[1].position.x;
 }
 
+void varianceDeepCallback(const geometry_msgs::PoseArrayConstPtr& msg){
+
+	covD=msg->poses[0].position.x;
+	covDD=msg->poses[1].position.x;
+}
 int main(int argc, char **argv) 
 {
 	ros::init(argc, argv, "evaluator");
@@ -304,6 +324,7 @@ int main(int argc, char **argv)
 	info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/person/depth/camera_info",1);
 	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/radar_detector_ol/poses",1,radarPoseCallback);
 	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
+	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/deep/trajectory_acc",1,varianceDeepCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
 	deep_radar_sub_ = nh_.subscribe<visualization_msgs::Marker>("/deep_radar/out/clustering",1, deepPoseCallback); 
 

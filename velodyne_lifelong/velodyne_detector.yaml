@@ -6,7 +6,8 @@ bayes_people_tracker:
         std_limit: 1.0                                         # upper limit for the standard deviation of the estimated position 
     detectors:                                                 # Add detectors under this namespace
         adaptive_clustering:                                   # Name of detector (used internally to identify them). Has to be unique.
-            topic: "/radar_detector_ol/poses"                  # The topic on which the geometry_msgs/PoseArray is published
+            topic0: "/radar_detector_ol/poses"                  # The topic on which the geometry_msgs/PoseArray is published
+            topic1: "/deep_radar/out/clustering"
             observation_model: "CARTESIAN"                     # Obeservation model: CARTESIAN or POLAR
             noise_params:                                      # The noise for the cartesian or polar observation model
                 x: 0.5

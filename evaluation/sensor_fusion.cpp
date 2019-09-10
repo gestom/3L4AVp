@@ -163,10 +163,11 @@ float dist(float x,float y, float rx,float ry)
 int main(int argc,char* argv[])
 {
 	/*read input*/
-	int laserOutliers,laserMeasurements,radarOutliers,radarMeasurements,kalmanOutliers,switchingOutliers;
-	laserOutliers=laserMeasurements=radarOutliers=radarMeasurements=switchingOutliers=kalmanOutliers=0;
+	int laserOutliers,laserMeasurements,radarOutliers,radarMeasurements,kalmanOutliers,switchingOutliers,deepOutliers,deepMeasurements,kalmanDeepOutliers,switchingDeepOutliers;
+	laserOutliers=laserMeasurements=radarOutliers=radarMeasurements=switchingOutliers=kalmanOutliers=deepOutliers=deepMeasurements=kalmanDeepOutliers=switchingDeepOutliers=0;
 
-	vector<float> camX,camY,radX,radY,radC,lasX,lasY,lasC,radTX,radTY,lasTX,lasTY,deepX,deepY,deepTX,deepTY; 
+	vector<float> camX,camY,radX,radY,radC,lasX,lasY,lasC,radTX,radTY,lasTX,lasTY,deepX,deepY,deepTX,deepTY,deepC; 
+
 	vector<float> radNFX,radNFY,lasNFX,lasNFY,deepNFX,deepNFY;
 	vector<float> radNX,radNY,lasNX,lasNY,deepNX,deepNY;
 	if(argc<3)
@@ -177,10 +178,10 @@ int main(int argc,char* argv[])
 
 	ifstream inFile(argv[1]);
 	FILE *outFile = fopen(argv[2],"w");
-	float cx,cy,rx,ry,rc,lx,ly,lc,dx,dy;
+	float cx,cy,rx,ry,rc,lx,ly,lc,dx,dy,dc;
 	string ret;
 
-	while(inFile >> ret >> cx >> cy >> rx >>ry >> rc >> lx >> ly >> lc >> dx >> dy)
+	while(inFile >> ret >> cx >> cy >> rx >>ry >> rc >> lx >> ly >> lc >> dx >> dy >> dc)
 	{
 		if (rx*ry !=0){
 			camX.push_back(cx);
@@ -193,6 +194,8 @@ int main(int argc,char* argv[])
 			lasC.push_back(lc);
 			deepTX.push_back(dx);
 			deepTY.push_back(dy);
+			deepC.push_back(dc);
+
 		}
 
 	}
@@ -221,8 +224,8 @@ int main(int argc,char* argv[])
 	transformRot(camX,camY,deepTX,deepTY,deepNX,deepNY,&deepX,&deepY,&deepNFX,&deepNFY);
 	//return 0;
 
-	float wr,wl,kfX,kfY,radD,lasD,kfD,sfD,sfX,sfY,deepD;
-	radD=lasD=sfD=kfD=deepD=0;
+	float wr,wl,kfX,kfY,radD,lasD,kfD,sfD,sfX,sfY,deepD,wd,kfdX,kfdY,kfdD,sfdX,sfdY,sfdD;
+	radD=lasD=sfD=kfD=deepD=kfdD=sfdD=0;
 	float lastRadX,lastRadY,lastLasX,lastLasY,lastDeepX,lastDeepY;
 	lastLasX=lastLasY=lastRadX=lastRadY = lastDeepX =lastDeepY = 10000;
 	int numRad,numLas,numDeep;	
@@ -231,18 +234,24 @@ int main(int argc,char* argv[])
 	{
 		if (radX[i] == lastRadX && radY[i] == lastRadY) numRad++; else numRad = 0; 
 		if (lasX[i] == lastLasX && lasY[i] == lastLasY) numLas++; else numLas = 0;
+		if (deepX[i] == lastDeepX && deepY[i] == lastDeepY) numDeep++; else numDeep = 0;
 		lastRadX = radX[i];
 		lastRadY = radY[i];
 		lastLasX = lasX[i];
 		lastLasY = lasY[i];
+		lastDeepX = deepX[i];
+		lastDeepY = deepY[i];
 
 		//gradually inflate covariance in case information is obsolete
 		wr = 1/(radC[i]*(pow(2,numRad)));
 		wl = 1/(lasC[i]*(pow(2,numLas)));
-
+		wd = 1/(deepC[i]*(pow(2,numDeep)));
+		
 		//kalman filter
 		kfX = (radX[i]*wr+lasX[i]*wl)/(wr+wl);
 		kfY = (radY[i]*wr+lasY[i]*wl)/(wr+wl);
+		kfdX = (deepX[i]*wd+lasX[i]*wl)/(wd+wl);
+		kfdY = (deepY[i]*wd+lasY[i]*wl)/(wd+wl);
 
 		//switching filter
 		if (wr > wl) {
@@ -252,6 +261,13 @@ int main(int argc,char* argv[])
 			sfX = lasX[i];
 			sfY = lasY[i];
 		}
+		if (wd > wl) {
+			sfdX = deepX[i];
+			sfdY = deepY[i];
+		}else{
+			sfdX = lasX[i];
+			sfdY = lasY[i];
+		}
 		if (numLas == 0){
 			if (dist(lasX[i],lasY[i],camX[i],camY[i]) > outlierDistance) laserOutliers++; 
 			laserMeasurements++;
@@ -260,11 +276,17 @@ int main(int argc,char* argv[])
 			if (dist(radX[i],radY[i],camX[i],camY[i]) > outlierDistance) radarOutliers++; 
 			radarMeasurements++;
 		}
+		if (numDeep == 0){
+			if (dist(deepX[i],deepY[i],camX[i],camY[i]) > outlierDistance) deepOutliers++; 
+			deepMeasurements++;
+		}
 		lasD += dist(lasX[i],lasY[i],camX[i],camY[i]);
 		radD += dist(radX[i],radY[i],camX[i],camY[i]);
 		deepD += dist(deepX[i],deepY[i],camX[i],camY[i]);
 		kfD += dist(kfX,kfY,camX[i],camY[i]);
 		sfD += dist(sfX,sfY,camX[i],camY[i]);
+		kfdD += dist(kfdX,kfdY,camX[i],camY[i]);
+		sfdD += dist(sfdX,sfdY,camX[i],camY[i]);
 		if (dist(kfX,kfY,camX[i],camY[i]) > outlierDistance){
 			//printf("OULIER %i\n",i);
 		       	kalmanOutliers++; 
@@ -273,8 +295,16 @@ int main(int argc,char* argv[])
 			//printf("SOULIER %i\n",i);
 		       	switchingOutliers++; 
 		}
+		if (dist(kfdX,kfdY,camX[i],camY[i]) > outlierDistance){
+			//printf("OULIER %i\n",i);
+		       	kalmanDeepOutliers++; 
+		}
+		if (dist(sfdX,sfdY,camX[i],camY[i]) > outlierDistance){
+			//printf("SOULIER %i\n",i);
+		       	switchingDeepOutliers++; 
+		}
 		//printf("Las/Rad/KF/SF %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),numLas);
-		fprintf(outFile,"ERR Las/Rad/KF/SF/Deep %f %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),dist(deepX[i],deepY[i],camX[i],camY[i]),numLas);
+		fprintf(outFile,"ERR Las/Rad/KF/SF/Deep/KFD/SFD %f %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),dist(deepX[i],deepY[i],camX[i],camY[i]),dist(kfdX,kfdY,camX[i],camY[i]),dist(sfdX,sfdY,camX[i],camY[i]),numLas);
 		fprintf(outFile,"SUM Las/Rad/KF/SF/Deep %f %f %f %f %f %i\n",lasD/(i+1),radD/(i+1),kfD/(i+1),sfD/(i+1),deepD/(i+1),numLas);
 	}
 	int siz = camX.size();
@@ -283,9 +313,11 @@ int main(int argc,char* argv[])
 	radD = radD/siz;
 	sfD = sfD/siz;
 	kfD = kfD/siz;
-	printf("Sum Las/Rad/KF/SF/Deep %.1f %.1f %.1f %.1f %.1f \n",100*lasD,100*radD,100*kfD,100*sfD,deepD);
+	sfdD = sfdD/siz;
+	kfdD = kfdD/siz;
+	printf("Sum Las/Rad/KF/SF/Deep %.1f %.1f %.1f %.1f %.1f %.1f %1.f \n",100*lasD,100*radD,100*kfD,100*sfD,deepD,100*kfdD,100*sfdD);
 	//siz = 100;
-	printf("FPs Las/Rad/KF/SF %.1f %.1f %.1f %.1f\n",100.0*laserOutliers/laserMeasurements,100.0*radarOutliers/radarMeasurements,100.0*kalmanOutliers/siz,100.0*switchingOutliers/siz);
+	printf("FPs Las/Rad/KF/SF/FKD/SFD %.1f %.1f %.1f %.1f %.1f %.1f \n",100.0*laserOutliers/laserMeasurements,100.0*radarOutliers/radarMeasurements,100.0*kalmanOutliers/siz,100.0*switchingOutliers/siz,100.0*kalmanDeepOutliers/siz,100.0*switchingDeepOutliers/siz);
 
 	return 0;
 }

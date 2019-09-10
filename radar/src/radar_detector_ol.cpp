@@ -102,7 +102,7 @@ Object3dDetector::Object3dDetector() {
   private_nh.param<bool>("print_fps", print_fps_, false);
   private_nh.param<std::string>("frame_id", frame_id_, "base_radar_link");
   private_nh.param<float>("cluster_tolerance", cluster_tolerance_, 0.3);
-  private_nh.param<int>("cluster_size_min", cluster_size_min_, 8);
+  private_nh.param<int>("cluster_size_min", cluster_size_min_, 10);
   private_nh.param<int>("cluster_size_max", cluster_size_max_, 300);
   private_nh.param<float>("human_probability", human_probability_, 0.5);
   private_nh.param<int>("round_positives", round_positives_, 12);

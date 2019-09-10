@@ -17,6 +17,7 @@ PeopleTracker::PeopleTracker() : detect_seq(0), marker_seq(0) {
   std::string pub_topic_people;
   std::string pub_topic_trajectory;
   std::string pub_topic_trajectory_acc;
+  std::string pub_topic_deep_trajectory_acc;
   std::string pub_topic_marker;
   std::string pub_variance;
   
@@ -53,8 +54,13 @@ PeopleTracker::PeopleTracker() : detect_seq(0), marker_seq(0) {
   pub_people = n.advertise<people_msgs::People>(pub_topic_people.c_str(), 100, con_cb, con_cb);
   private_node_handle.param("trajectory", pub_topic_trajectory, std::string("/people_tracker/trajectory"));
   pub_trajectory = n.advertise<geometry_msgs::PoseArray>(pub_topic_trajectory.c_str(), 100, con_cb, con_cb);
+
   private_node_handle.param("trajectory_acc", pub_topic_trajectory_acc, std::string("/people_tracker/trajectory_acc"));
   pub_trajectory_acc = n.advertise<geometry_msgs::PoseArray>(pub_topic_trajectory_acc.c_str(), 100, con_cb, con_cb);
+
+  private_node_handle.param("deep_trajectory_acc", pub_topic_deep_trajectory_acc, std::string("/people_tracker/deep/trajectory_acc"));
+  pub_deep_trajectory_acc = n.advertise<geometry_msgs::PoseArray>(pub_topic_deep_trajectory_acc.c_str(), 100, con_cb, con_cb);
+
   private_node_handle.param("marker", pub_topic_marker, std::string("/people_tracker/marker_array"));
   pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_topic_marker.c_str(), 100, con_cb, con_cb);
   private_node_handle.param("variance", pub_variance, std::string("/people_tracker/variance"));
@@ -191,8 +197,10 @@ void PeopleTracker::parseParams(ros::NodeHandle n) {
 		       );
       return;
     }
-    ros::Subscriber sub;
-    subscribers[std::pair<std::string, std::string>(it->first, detectors[it->first]["topic"])] = sub;
+    ros::Subscriber sub0;
+    subscribers[std::pair<std::string, std::string>(it->first, detectors[it->first]["topic0"])] = sub0;
+    ros::Subscriber sub1;
+    subscribers[std::pair<std::string, std::string>(it->first, detectors[it->first]["topic1"])] = sub1;
   }
 }
 
@@ -274,6 +282,19 @@ void PeopleTracker::trackingThread() {
 	trajectory_acc.poses = vars;
 	pub_trajectory_acc.publish(trajectory_acc);
       }
+
+      /* FIDEL fill it here */
+      /*
+       *if(pub_deep_trajectory_acc.getNumSubscribers()) {
+		geometry_msgs::PoseArray deep_trajectory_acc;
+		deep_trajectory_acc.header.stamp = ros::Time::now();
+	  	deep_trajectory_acc.header.frame_id = target_frame;
+		deep_trajectory_acc.poses = vars;
+		pub_deep_trajectory_acc.publish(deep_trajectory_acc);
+	    }
+      */
+
+
       
       //if(pub_trajectory.getNumSubscribers())
       publishTrajectory(poses, vels, vars, pids, pub_trajectory); //publsh(poses,vels...)
@@ -649,10 +670,11 @@ void PeopleTracker::connectCallback(ros::NodeHandle &n) {
   bool people = pub_people.getNumSubscribers();
   bool trajectory = pub_trajectory.getNumSubscribers();
   bool trajectory_acc = pub_trajectory_acc.getNumSubscribers();
+  bool deep_trajectory_acc = pub_deep_trajectory_acc.getNumSubscribers();
   bool markers = pub_marker.getNumSubscribers();
   std::map<std::pair<std::string, std::string>, ros::Subscriber>::const_iterator it;
   
-  if(!loc && !pose && !pose_array && !people && !trajectory && !trajectory_acc && !markers) {
+  if(!loc && !pose && !pose_array && !people && !trajectory && !trajectory_acc && !deep_trajectory_acc && !markers) {
     ROS_DEBUG("Pedestrian Localisation: No subscribers. Unsubscribing.");
     for(it = subscribers.begin(); it != subscribers.end(); ++it)
       const_cast<ros::Subscriber&>(it->second).shutdown();

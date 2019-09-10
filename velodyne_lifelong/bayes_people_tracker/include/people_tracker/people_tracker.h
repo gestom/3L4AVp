@@ -224,6 +224,7 @@ class PeopleTracker
   ros::Publisher pub_people;
   ros::Publisher pub_trajectory;
   ros::Publisher pub_trajectory_acc;
+  ros::Publisher pub_deep_trajectory_acc;
   ros::Publisher pub_marker;
   tf::TransformListener* listener;
   std::string target_frame;

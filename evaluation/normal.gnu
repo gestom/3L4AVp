@@ -12,4 +12,6 @@ plot [0:110] [0:0.28] 'sum.tmp' using ($0/30):3 with lines title 'Lidar estimate
 '' using ($0/30):5 with lines title 'Weighted filter [m]' lw 2,\
 '' using ($0/30):6 with lines title 'Switching filter [m]' lw 2,\
 '' using ($0/30):7 with lines title 'Deep radar [m]' lw 2,\
+'' using ($0/30):8 with lines title 'Weighted Deep filter [m]' lw 2,\
+'' using ($0/30):9 with lines title 'Switching Deep filter [m]' lw 2,\
 #'fog.txt' using 1:2 with lines lt 2 lw 2 lc 0 notitle
