@@ -1,4 +1,4 @@
 <launch>
-    <node pkg="3L4AV" type="train.py" output="screen">
-    </node>
+    <node pkg="deep-radar" name="train" type="train.py" output="screen"/>
+
 </launch>
