@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 import sys
-sys.path.insert(0, 'nn-utils')
-
-import argparse
 import math
 import h5py
 import numpy as np
@@ -11,25 +8,9 @@ import socket
 
 import os
 import sys
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
-sys.path.append(BASE_DIR)
-sys.path.append(ROOT_DIR)
-sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-import provider
-import tf_util
-from model import *
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
-parser.add_argument('--max_epoch', type=int, default=50, help='Epoch to run [default: 50]')
-parser.add_argument('--batch_size', type=int, default=24, help='Batch Size during training [default: 24]')
-parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
-parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
-parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
-parser.add_argument('--decay_step', type=int, default=300000, help='Decay step for lr decay [default: 300000]')
-parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate for lr decay [default: 0.5]')
-FLAGS = parser.parse_args()
+import pn_provider
+import pn_tf_util
+from pn_model import *
 
 ratio = 6
 
@@ -300,7 +281,7 @@ def eval_one_epoch(sess, ops, test_writer):
                 l = current_label[i, j]
                 total_seen_class[l] += 1
                 total_correct_class[l] += (pred_val[i-start_idx, j] == l)
-            
+
     try:
         log_string('eval mean loss: %f' % (loss_sum / float(total_seen/NUM_POINT)))
         log_string('eval accuracy: %f'% (total_correct / float(total_seen)))

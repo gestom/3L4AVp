@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="deep-radar" name="train" type="offlineCollectData.py" output="screen"/>
+</launch>

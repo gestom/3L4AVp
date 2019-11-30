@@ -1,5 +1,4 @@
 import sys
-sys.path.insert(0, 'nn-utils')
 
 import argparse
 import math
@@ -10,14 +9,9 @@ import socket
 
 import os
 import sys
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
-sys.path.append(BASE_DIR)
-sys.path.append(ROOT_DIR)
-sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-import provider
-import tf_util
-from model import *
+import pn_provider
+import pn_tf_util
+from pn_model import *
 import time
 
 import rospy
