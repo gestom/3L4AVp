@@ -2,5 +2,5 @@ opencv_python
 numpy
 h5py
 scikit_learn
-tensorflow-gpu
+tensorflow-gpu==1.15.0
 tf

@@ -8,20 +8,24 @@ import socket
 
 import os
 import sys
-import pn_provider
-import pn_tf_util
+import pn_provider as provider
+import pn_tf_util as tf_util
 from pn_model import *
+
+if tf.__version__[0] != "1":
+	print("Please use tensorflow v.1")
+	sys.exit(0)
 
 ratio = 6
 
-BATCH_SIZE = FLAGS.batch_size
-MAX_EPOCH = FLAGS.max_epoch
-BASE_LEARNING_RATE = FLAGS.learning_rate
-GPU_INDEX = FLAGS.gpu
-MOMENTUM = FLAGS.momentum
-OPTIMIZER = FLAGS.optimizer
-DECAY_STEP = FLAGS.decay_step
-DECAY_RATE = FLAGS.decay_rate
+BATCH_SIZE = 32
+MAX_EPOCH = 20
+BASE_LEARNING_RATE = 0.001
+GPU_INDEX = 0
+MOMENTUM = 0.9
+OPTIMIZER = 'adam'
+DECAY_STEP = 300000
+DECAY_RATE = 0.5
 
 MAX_NUM_POINT = 4096
 NUM_CLASSES = 2
@@ -73,7 +77,7 @@ if not os.path.exists(os.path.join("models", datasetName)): os.mkdir(os.path.joi
 if not os.path.exists(os.path.join("models", datasetName, subsetName)): os.mkdir(os.path.join("models", datasetName, subsetName))
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
-LOG_FOUT.write(str(FLAGS)+'\n')
+#LOG_FOUT.write(str(FLAGS)+'\n')
 
 # Load ALL data
 data_batch_list = []
