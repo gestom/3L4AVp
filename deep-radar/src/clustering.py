@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import numpy as np
 from sklearn.cluster import KMeans
 import cv2
@@ -7,48 +8,43 @@ import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 from visualization_msgs import msg as msgTemplate
 from geometry_msgs.msg import Point
+from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseArray
 import math
+
+from sklearn.cluster import DBSCAN
+import numpy as np
 
 import random
 
 clusterDistance = 1 
 minClusterPoints = 4
 
+visPublisher = None
 publisher = None
 
 def callback(msg):
 
 	if msg.id != 0:
 
-		clusters = []
-		toSearch = msg.points
+		buf = []
+		for i in msg.points:
+			buf.append([i.x, i.y])
 
-		while len(toSearch):
+		print buf
+		clusterer = DBSCAN(eps=0.4, min_samples=5).fit(buf)
+		clusterNames = list(set(clusterer.labels_))
+		clusters = {}
 
-			pointIndex = random.randint(0, len(toSearch) - 1)
-			point = toSearch[pointIndex]
-			del toSearch[pointIndex]
-			newCluster = [point]
-			toDelete = []
+		for i in clusterNames:
+			clusters[i] = []
 
-			for i in xrange(0, len(toSearch)):
-
-				distance = math.sqrt((toSearch[i].x ** 2) + (toSearch[i].y ** 2))
-
-				if distance > clusterDistance:
-					continue
-
-				newCluster.append(toSearch[i])
-				toDelete.append(i)
-
-			toDelete = list(reversed(toDelete))
-
-			if len(newCluster) >= minClusterPoints:
-				clusters.append(newCluster)
-				for i in toDelete:
-					del toSearch[i]
+		for i in xrange(0, len(msg.points)):
+			clusters[clusterer.labels_[i]].append(msg.points[i])
 
 		print "Found %i clusters" % (len(clusters))
+
+		positions = []
 
 		for i in xrange(0, len(clusters)):
 
@@ -83,16 +79,36 @@ def callback(msg):
 			meanY = totalY / len(clusters[i])
 			print meanX, meanY
 
+			positions.append([meanX, meanY])
+
 			msg.pose.position.x = meanX
 			msg.pose.position.y = meanY
 			msg.pose.position.z = 0
-			# msg.points = [Point(x=meanX, y=meanY, z=0)]
 
-			publisher.publish(msg)
+			visPublisher.publish(msg)
+
+		msg = PoseArray()
+
+		msg.header.frame_id = "base_radar_link";
+		msg.header.stamp = rospy.Time.now();
+
+		msg.poses = []
+
+		for i in positions:
+
+			pose = Pose()
+			pose.position.x = i[0]
+			pose.position.y = i[1]
+			pose.position.z = 0
+
+			msg.poses.append(pose)
+
+		publisher.publish(msg)
 
 if __name__ == '__main__':
 	print("Starting clustering")
 	rospy.init_node('clustering')
-	publisher = rospy.Publisher('/deep_radar/out/clustering', msgTemplate.Marker, queue_size=0)
+	visPublisher = rospy.Publisher('/deep_radar/out/clusteringVis', msgTemplate.Marker, queue_size=0)
+	publisher = rospy.Publisher('/deep_radar/out/clustering', PoseArray, queue_size=0)
 	rospy.Subscriber("/deep_radar/out/points", msgTemplate.Marker, callback)
 	rospy.spin()
