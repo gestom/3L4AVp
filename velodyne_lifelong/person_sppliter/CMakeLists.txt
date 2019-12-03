@@ -13,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
     geometry_msgs
     )
 catkin_package(
-  INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS
       roscpp
