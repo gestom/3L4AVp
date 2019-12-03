@@ -42,9 +42,6 @@
    </include>
 
 
-   <launch>
-     <node pkg="deep-radar" name="train" type="train.py" output="screen"/>
-   </launch>
 
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_velodyne" args="0 0 0 0 0 0 map velodyne 100"/>
  
