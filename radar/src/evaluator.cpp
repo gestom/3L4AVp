@@ -11,6 +11,7 @@
 #include <opencv2/opencv.hpp>
 #include <visualization_msgs/MarkerArray.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/Pose.h>
 #include <people_msgs/PositionMeasurementArray.h>
 #include <visualization_msgs/Marker.h>
 using namespace cv;
@@ -52,6 +53,7 @@ float covD = 0.1;
 float covDD = 0.1;
 float realX;
 float realY;
+ros::Publisher camera_ground_truth_publihser_;
 
 typedef struct
 {
@@ -228,8 +230,12 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 		y = y/numPoints;  
 		x = x/numPoints; 
 		personCamx=z;
-		personCamy=-x; 
-		
+		personCamy=-x;
+    geometry_msgs:: Pose ps;
+    ps.position.x=personCamx;
+    ps.position.y=personCamy;
+
+    camera_ground_truth_publihser_.publish(ps);
 		realX=((1/covL)*personLegx + (1/covR)*personRadx)/((1/covL)+(1/covR));
 		realY=((1/covL)*personLegy + (1/covR)*personRady)/((1/covL)+(1/covR));
 		
@@ -326,7 +332,8 @@ int main(int argc, char **argv)
 	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
 	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/deep/trajectory_acc",1,varianceDeepCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
-	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/deep_radar/out/clustering",1, deepPoseCallback); 
+	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/deep_radar/out/clustering",1, deepPoseCallback);
+  camera_ground_truth_publihser_ = nh_.advertise<geometry_msgs::Pose>("/person/ground_truth",1);
 
 
 	ros::spin();

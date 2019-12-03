@@ -9,12 +9,11 @@ from visualization_msgs import msg as msgTemplate
 from geometry_msgs.msg import Point
 
 import sys
-sys.path.insert(0, 'nn-utils')
 
 import os
 import sys
-from model import *
-import indoor3d_util
+from pn_model import *
+import pn_indoor3d_util as indoor3d_util
 
 sess = None
 loss = None

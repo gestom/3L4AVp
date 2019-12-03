@@ -1,0 +1,5 @@
+*.pyc
+src/tmp/
+src/rosbags/
+src/models/
+src/datasets/

@@ -16,11 +16,9 @@ import laser_geometry.laser_geometry as lg
 from visualization_msgs import msg as msgTemplate
 from geometry_msgs.msg import Point
 
-sys.path.insert(0, "nn-utils")
-
-from model import *
-import provider
-import tf_util
+from pn_model import *
+import pn_provider
+import pn_tf_util
 
 #############################################
 #Adjust these topics and topic types to match

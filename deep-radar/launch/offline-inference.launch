@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="deep-radar" name="inference" type="offlineInference.py" output="screen"/>
+    <node pkg="deep-radar" name="clustering" type="clustering.py" output="screen"/>
+</launch>

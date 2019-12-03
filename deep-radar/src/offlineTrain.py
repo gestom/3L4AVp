@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 import sys
-sys.path.insert(0, 'nn-utils')
-
-import argparse
 import math
 import h5py
 import numpy as np
@@ -11,36 +8,24 @@ import socket
 
 import os
 import sys
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
-sys.path.append(BASE_DIR)
-sys.path.append(ROOT_DIR)
-sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-import provider
-import tf_util
-from model import *
+import pn_provider as provider
+import pn_tf_util as tf_util
+from pn_model import *
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
-parser.add_argument('--max_epoch', type=int, default=50, help='Epoch to run [default: 50]')
-parser.add_argument('--batch_size', type=int, default=24, help='Batch Size during training [default: 24]')
-parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
-parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
-parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
-parser.add_argument('--decay_step', type=int, default=300000, help='Decay step for lr decay [default: 300000]')
-parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate for lr decay [default: 0.5]')
-FLAGS = parser.parse_args()
+if tf.__version__[0] != "1":
+	print("Please use tensorflow v.1")
+	sys.exit(0)
 
 ratio = 6
 
-BATCH_SIZE = FLAGS.batch_size
-MAX_EPOCH = FLAGS.max_epoch
-BASE_LEARNING_RATE = FLAGS.learning_rate
-GPU_INDEX = FLAGS.gpu
-MOMENTUM = FLAGS.momentum
-OPTIMIZER = FLAGS.optimizer
-DECAY_STEP = FLAGS.decay_step
-DECAY_RATE = FLAGS.decay_rate
+BATCH_SIZE = 32
+MAX_EPOCH = 20
+BASE_LEARNING_RATE = 0.001
+GPU_INDEX = 0
+MOMENTUM = 0.9
+OPTIMIZER = 'adam'
+DECAY_STEP = 300000
+DECAY_RATE = 0.5
 
 MAX_NUM_POINT = 4096
 NUM_CLASSES = 2
@@ -92,7 +77,7 @@ if not os.path.exists(os.path.join("models", datasetName)): os.mkdir(os.path.joi
 if not os.path.exists(os.path.join("models", datasetName, subsetName)): os.mkdir(os.path.join("models", datasetName, subsetName))
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
-LOG_FOUT.write(str(FLAGS)+'\n')
+#LOG_FOUT.write(str(FLAGS)+'\n')
 
 # Load ALL data
 data_batch_list = []
@@ -300,7 +285,7 @@ def eval_one_epoch(sess, ops, test_writer):
                 l = current_label[i, j]
                 total_seen_class[l] += 1
                 total_correct_class[l] += (pred_val[i-start_idx, j] == l)
-            
+
     try:
         log_string('eval mean loss: %f' % (loss_sum / float(total_seen/NUM_POINT)))
         log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
