@@ -170,14 +170,15 @@ int main(int argc,char* argv[])
 
 	vector<float> radNFX,radNFY,lasNFX,lasNFY,deepNFX,deepNFY;
 	vector<float> radNX,radNY,lasNX,lasNY,deepNX,deepNY;
-	if(argc<3)
+	if(argc<4)
 	{
-		fprintf(stderr,"usage: %s referencePoints.txt points.txt \n",argv[0]); 
+		fprintf(stderr,"usage: %s referencePoints.txt outputpoints.txt slidingAverageOutput.txt \n",argv[0]); 
 		return 0;
 	}
 
 	ifstream inFile(argv[1]);
 	FILE *outFile = fopen(argv[2],"w");
+	FILE *outAvgFile = fopen(argv[3],"w");
 	float cx,cy,rx,ry,rc,lx,ly,lc,dx,dy,dc;
 	string ret;
 
@@ -212,7 +213,7 @@ int main(int argc,char* argv[])
 	copy(lasTY.begin(),lasTY.end(),back_inserter(lasNY));
 	copy(deepTX.begin(),deepTX.end(),back_inserter(deepNX));
 	copy(deepTY.begin(),deepTY.end(),back_inserter(deepNY));
-	
+
 
 	float radarFPs = outlierFilter(&radTX,&radTY);
 	float laserFPs = outlierFilter(&lasTX,&lasTY);
@@ -229,7 +230,8 @@ int main(int argc,char* argv[])
 	float lastRadX,lastRadY,lastLasX,lastLasY,lastDeepX,lastDeepY;
 	lastLasX=lastLasY=lastRadX=lastRadY = lastDeepX =lastDeepY = 10000;
 	int numRad,numLas,numDeep;	
-	numRad=numLas=numDeep=0;	
+	numRad=numLas=numDeep=0;
+	vector<float> camRadDist,camDeepDist,camLasDist,camKfRDist,camSfRDist,camKfDeDist,camSfDeDist;	
 	for (int i = 0;i<camX.size();i++)
 	{
 		if (radX[i] == lastRadX && radY[i] == lastRadY) numRad++; else numRad = 0; 
@@ -246,7 +248,7 @@ int main(int argc,char* argv[])
 		wr = 1/(radC[i]*(pow(2,numRad)));
 		wl = 1/(lasC[i]*(pow(2,numLas)));
 		wd = 1/(deepC[i]*(pow(2,numDeep)));
-		
+
 		//kalman filter
 		kfX = (radX[i]*wr+lasX[i]*wl)/(wr+wl);
 		kfY = (radY[i]*wr+lasY[i]*wl)/(wr+wl);
@@ -287,26 +289,93 @@ int main(int argc,char* argv[])
 		sfD += dist(sfX,sfY,camX[i],camY[i]);
 		kfdD += dist(kfdX,kfdY,camX[i],camY[i]);
 		sfdD += dist(sfdX,sfdY,camX[i],camY[i]);
+		camLasDist.push_back(dist(lasX[i],lasY[i],camX[i],camY[i]));
+		camRadDist.push_back(dist(radX[i],radY[i],camX[i],camY[i]));
+		camDeepDist.push_back(dist(deepX[i],deepY[i],camX[i],camY[i]));
+		camKfRDist.push_back(dist(kfX,kfY,camX[i],camY[i]));
+		camSfRDist.push_back(dist(sfX,sfY,camX[i],camY[i]));
+		camKfDeDist.push_back(dist(kfdX,kfdY,camX[i],camY[i]));
+		camSfDeDist.push_back(dist(sfdX,sfdY,camX[i],camY[i]));
 		if (dist(kfX,kfY,camX[i],camY[i]) > outlierDistance){
 			//printf("OULIER %i\n",i);
-		       	kalmanOutliers++; 
+			kalmanOutliers++; 
 		}
 		if (dist(sfX,sfY,camX[i],camY[i]) > outlierDistance){
 			//printf("SOULIER %i\n",i);
-		       	switchingOutliers++; 
+			switchingOutliers++; 
 		}
 		if (dist(kfdX,kfdY,camX[i],camY[i]) > outlierDistance){
 			//printf("OULIER %i\n",i);
-		       	kalmanDeepOutliers++; 
+			kalmanDeepOutliers++; 
 		}
 		if (dist(sfdX,sfdY,camX[i],camY[i]) > outlierDistance){
 			//printf("SOULIER %i\n",i);
-		       	switchingDeepOutliers++; 
+			switchingDeepOutliers++; 
 		}
 		//printf("Las/Rad/KF/SF %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),numLas);
 		fprintf(outFile,"ERR Las/Rad/KF/SF/Deep/KFD/SFD %f %f %f %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),dist(deepX[i],deepY[i],camX[i],camY[i]),dist(kfdX,kfdY,camX[i],camY[i]),dist(sfdX,sfdY,camX[i],camY[i]),numLas);
 		fprintf(outFile,"SUM Las/Rad/KF/SF/Deep %f %f %f %f %f %f %f %i\n",lasD/(i+1),radD/(i+1),kfD/(i+1),sfD/(i+1),deepD/(i+1),kfdD/(i+1),sfdD/(i+1),numLas);
 	}
+
+	//Sliding average
+	int sample_size = 4;
+	bool init=true;
+	vector<float> camRadADist,camDeepADist,camLasADist,camKfRADist,camSfRADist,camKfDeADist,camSfDeADist;	
+	for (int i = 0;i<camX.size();i++)
+	{
+
+		//Fill first x values
+		if(init){
+			camRadADist.push_back(camRadDist[i]);
+			camDeepADist.push_back(camDeepDist[i]);
+			camLasADist.push_back(camLasDist[i]);
+			camKfRADist.push_back(camKfRDist[i]);
+			camSfRADist.push_back(camSfRDist[i]);
+			camKfDeADist.push_back(camKfDeDist[i]);
+			camSfDeADist.push_back(camSfDeDist[i]);
+
+			if(i==sample_size-1) init = false;
+			continue;
+		}
+		float rd,ld,dd,krd,srd,kdd,sdd; 
+		rd=ld=dd=krd=srd=kdd=sdd=0;
+		
+		//Get average
+		for(int j=0; j<sample_size;j++){
+			rd += camRadADist[j];
+			ld += camLasADist[j];
+			dd += camDeepADist[j];
+			krd += camKfRADist[j];
+			srd += camSfRADist[j];
+			kdd += camKfDeADist[j];
+			sdd += camSfDeADist[j];
+
+
+		}
+
+		fprintf(outAvgFile,"SlidingAvaverage rad/las/deep/kf/sf/kfDeep/sfDeep %f %f %f %f %f %f %f \n",rd/sample_size,ld/sample_size,dd/sample_size,krd/sample_size,srd/sample_size,kdd/sample_size,sdd/sample_size);
+
+
+		//Pop first element, add last
+		camRadADist.erase(camRadADist.begin());
+		camDeepADist.erase(camDeepADist.begin());
+		camLasADist.erase(camLasADist.begin());
+		camKfRADist.erase(camKfRADist.begin());
+		camSfRADist.erase(camSfRADist.begin());
+		camKfDeADist.erase(camKfDeADist.begin());
+		camSfDeADist.erase(camSfDeADist.begin());
+		
+		camRadADist.push_back(camRadDist[i]);
+		camDeepADist.push_back(camDeepDist[i]);
+		camLasADist.push_back(camLasDist[i]);
+		camKfRADist.push_back(camKfRDist[i]);
+		camSfRADist.push_back(camSfRDist[i]);
+		camKfDeADist.push_back(camKfDeDist[i]);
+		camSfDeADist.push_back(camSfDeDist[i]);
+
+	}
+
+
 	int siz = camX.size();
 	lasD = lasD/siz;
 	deepD = deepD/siz;
