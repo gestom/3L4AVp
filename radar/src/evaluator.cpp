@@ -231,10 +231,15 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 		x = x/numPoints; 
 		personCamx=z;
 		personCamy=-x;
-    geometry_msgs:: Pose ps;
-    ps.position.x=personCamx;
-    ps.position.y=personCamy;
-
+    std_msgs::Header header;
+    geometry_msgs:: PoseArray ps;
+    geometry_msgs:: Pose pos;
+    
+    pos.position.x=x;
+    pos.position.y=y;
+      pos.position.z=z;
+    ps.header=depth_msg->header;
+    ps.poses.push_back(pos);
     camera_ground_truth_publihser_.publish(ps);
 		realX=((1/covL)*personLegx + (1/covR)*personRadx)/((1/covL)+(1/covR));
 		realY=((1/covL)*personLegy + (1/covR)*personRady)/((1/covL)+(1/covR));
@@ -328,12 +333,12 @@ int main(int argc, char **argv)
 	sub_depth_ = it_.subscribe("/camera/depth/image_rect_raw", 1, imageCallback);
 	info_sub_ = nh_.subscribe("/camera/depth/camera_info",1,infoCallback);
 	info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/person/depth/camera_info",1);
-	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/radar_detector_ol/poses",1,radarPoseCallback);
+	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",1,radarPoseCallback);
 	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
 	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/deep/trajectory_acc",1,varianceDeepCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
-	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/deep_radar/out/clustering",1, deepPoseCallback);
-  camera_ground_truth_publihser_ = nh_.advertise<geometry_msgs::Pose>("/person/ground_truth",1);
+	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",1, deepPoseCallback);
+  camera_ground_truth_publihser_ = nh_.advertise<geometry_msgs::PoseArray>("/person/ground_truth",1);
 
 
 	ros::spin();
