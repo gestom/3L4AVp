@@ -1,4 +1,0 @@
-<launch>
-    <node pkg="deep-radar" name="train" type="train.py" output="screen"/>
-
-</launch>
