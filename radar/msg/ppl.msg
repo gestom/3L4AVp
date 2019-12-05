@@ -1,0 +1,2 @@
+string tag
+geometry_msgs/PoseWithCovariance pose

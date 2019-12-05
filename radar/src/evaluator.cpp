@@ -14,6 +14,8 @@
 #include <geometry_msgs/Pose.h>
 #include <people_msgs/PositionMeasurementArray.h>
 #include <visualization_msgs/Marker.h>
+#include <vector>
+#include <radar/radar_fusion.h>
 using namespace cv;
 using namespace std;
 ros::Subscriber groundTruthSub;
@@ -22,7 +24,16 @@ boost::shared_ptr<image_transport::ImageTransport> it_;
 image_transport::Subscriber sub_depth_;
 image_transport::Publisher depth_pub_;
 ros::Publisher info_pub_;
-ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_,variance_deep_sub_, deep_radar_sub_;
+ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_,variance_deep_sub_, deep_radar_sub_, gt_subscriber_;
+
+
+std::vector<std::vector<float>> rad;
+std::vector<std::vector<float>> cam;
+std::vector<std::vector<float>> leg;
+std::vector<std::vector<float>> deep;
+std::vector<float> ccovR;
+std::vector<float> ccovD;
+std::vector<float> ccovL;
 float fy,fx,cx,cy;
 float personRadx;
 float personRady;
@@ -40,7 +51,6 @@ float personLegxx;
 float personLegyy;
 float personDeepxx;
 float personDeepyy;
-int numofDetection;
 float totalDistR;
 float totalDistL;
 ros::Time timestampS;
@@ -53,8 +63,7 @@ float covD = 0.1;
 float covDD = 0.1;
 float realX;
 float realY;
-ros::Publisher camera_ground_truth_publihser_;
-
+ros::Publisher evaluator_mux_publisher_;
 typedef struct
 {
   float maxX,maxY,maxZ;
@@ -153,8 +162,8 @@ void checkQueues()
 	vector<int> removeGT;
 	vector<int> removeDet;
 	//printf("Queues: %d %d\n",groundTruth.size(),detection.size());
-	int i = 0; 
-	int j = 0; 
+	int i = 0;
+	int j = 0;
 
 	while (i<groundTruth.size())
 	{
@@ -189,82 +198,84 @@ void detectorCb(const visualization_msgs::MarkerArray::ConstPtr& msg)
 	for (int i = 0;i<(int)msg->markers.size();i++)detection.push_back(formBox(msg->markers[i]));
 	checkQueues();
 }
+std::vector<geometry_msgs::PoseWithCovariance>  constructPoseWCovariance (std::vector<std::vector<float>> vec, std::vector<float> cov){
 
-void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
-{  
-	numOfCycles++; 
-	cv_bridge::CvImagePtr cv_ptr;
-	try     
-	{       
-		cv_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1 );
-	}
-	catch (cv_bridge::Exception& e)
-	{       
-		ROS_ERROR("cv_bridge exception: %s", e.what());
-		return;
-	}
-	numofDetection++;
+  std::vector<geometry_msgs::PoseWithCovariance> field;
+  for(int i = 0;i<vec.size();i++){
+
+    geometry_msgs::PoseWithCovariance pose;
+    pose.pose.position.x = vec[i][0];
+    pose.pose.position.y= vec[i][1];
+    pose.pose.position.z= vec[i][2];
+    pose.covariance = { cov[i], 0, 0, 0, 0, 0,
+                        0, cov[i], 0, 0, 0, 0,
+                        0, 0, cov[i], 0, 0, 0,
+                        0, 0, 0, cov[i], 0, 0,
+                        0, 0, 0, 0, cov[i], 0,
+                        0, 0, 0, 0, 0, cov[i]};
+    field.push_back(pose);
+  }
+  return field;
+}
+void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
+{
+	numOfCycles++; //not needed
 	float z = 0;
 	float y = 0;
 	float x = 0;
 	int numPoints=0;
 
-	for(int i=0;i<depth_msg->width;i++){
-		for(int j=0;j<depth_msg->height;j++){
-			if(j > 350||j < 20 || i < 10 || i > 570)  cv_ptr->image.at<float>(j,i) = 0; 
-			if((cv_ptr->image.at<float>(j,i) > 700) &&  (cv_ptr->image.at<float>(j,i) < 3100)){
 
-				z +=  cv_ptr->image.at<float>(j,i)*0.00082;        
-				x +=  (cv_ptr->image.at<float>(j,i)*0.00082) * ((i - 312.463) * (1.06/0.82/628.008));
-				y +=  (cv_ptr->image.at<float>(j,i)*0.00082) * ((j - 242.325) * (1.06/0.82/628.008));
-				numPoints++;
-			} else{ 
-				cv_ptr->image.at<float>(j,i) = 0;
-			}
-		}
-	}
 
-	if ( !isinf(x) && !isinf(y) && !isinf(z) )
-	{
-		z = z/numPoints;  
-		y = y/numPoints;  
-		x = x/numPoints; 
-		personCamx=z;
-		personCamy=-x;
-    std_msgs::Header header;
-    geometry_msgs:: PoseArray ps;
-    geometry_msgs:: Pose pos;
-    
-    pos.position.x=x;
-    pos.position.y=y;
-      pos.position.z=z;
-    ps.header=depth_msg->header;
-    ps.poses.push_back(pos);
-    camera_ground_truth_publihser_.publish(ps);
-		realX=((1/covL)*personLegx + (1/covR)*personRadx)/((1/covL)+(1/covR));
-		realY=((1/covL)*personLegy + (1/covR)*personRady)/((1/covL)+(1/covR));
-		
-		//covL=msg->people[0].covariance[0];
-		//cout << "Covariance Leg " << covL << endl;
-		cout<< "Cam/Rad/Leg/Deep " << personCamx << " " << personCamy << " " << personRadx << " " << personRady << " " << covR << " " <<  personLegx << " " << personLegy << " " << covL <<  " " << personDeepx << " " << personDeepy << " " << covD << endl;
-		//cout<< " Leg/Rad filter " << realX << " " << realY << endl; 
-		//Computing distances
+    cam.clear();
+    std::vector<float> ccovC;
+    for(int i = 0;i<msg->poses.size();i++)
+     {
+        vector<float> vec(3,0);
+        vec[0]=msg->poses[i].position.z;
+        vec[1]=-msg->poses[i].position.x;
+        vec[2]=0;
+        cam.push_back(vec);
+        ccovC.push_back(0);
+      }
+
+		realX=((1/leg[0][3])*leg[0][0] + (1/ccovR[0])*rad[0][0])/((1/leg[0][3])+(1/ccovR[0]));
+		realY=((1/leg[0][3])*leg[0][1] + (1/ccovR[0])*rad[0][1])/((1/leg[0][3])+(1/ccovR[0]));
+
+		//cout<< "Cam/Rad/Leg/Deep " << cam[0][0] << " " << cam[0][1] << " " << rad[0][0] << " " << rad[0][1] << " " << ccovR[0] << " " <<  leg[0][0] << " " << leg[0][1] << " " << leg[0][3] <<  " " << deep[0][0] << " " << deep[0][1] << " " << ccovD[0] << endl;
+
 		float distRC=0;
 		float distCL=0;
-		distRC=sqrt(pow((personCamx-personRadx),2)+pow((personCamy-personRady),2));
-		distCL=sqrt(pow((personCamx-personLegx),2)+pow((personCamy-personLegy),2));
+		distRC=sqrt(pow((cam[0][0]-rad[0][0]),2)+pow((cam[0][1]-rad[0][1]),2));
+		distCL=sqrt(pow((cam[0][0]-leg[0][0]),2)+pow((cam[0][0]-leg[0][1]),2));
 
 		if(!isnan(distRC)|| !isnan(distCL)){
 			totalDistR+=distRC;
 			totalDistL+=distCL;
-			//cout << "Radar current " << distRC << " Average distance " << totalDistR/numofDetection << " Detections " << numofDetection << endl;
-			//cout << "Laser current " << distCL << " Average distance " << totalDistL/numofDetection << " Detections " << numofDetection << endl;
-				//cout << "Dist radar " << distRC << endl;
-				//cout << "Dist Hokuyo " << distCL << endl;
-		}
 
-	}
-	depth_pub_.publish(cv_ptr->toImageMsg());
+		}
+    radar::radar_fusion message;
+    std_msgs::Header header;
+    geometry_msgs::PoseWithCovariance pose;
+    header = msg->header;
+    header.seq = numOfCycles;
+    header.frame_id = "map";
+    //cout<<"rad"<<endl;
+    message.header = header;
+    message.rad=constructPoseWCovariance(rad,ccovR);
+    //cout<<"LEG"<<endl;
+    message.leg=constructPoseWCovariance(leg,ccovL);
+    //cout<<"DEEP"<<endl;
+    message.deep=constructPoseWCovariance(deep,ccovD);
+    //cout<<"CAM"<<endl;
+    message.gt=constructPoseWCovariance(cam,ccovC);
+    evaluator_mux_publisher_.publish(message);
+    cout << "gt   "<<message.gt.size()<<endl;
+    cout << "rad   "<<message.rad.size()<<endl;
+    cout << "leg   "<<message.leg.size()<<endl;
+    cout << "deep   "<<message.deep.size()<<endl;
+
+    
 }
 
 void infoCallback(const sensor_msgs::CameraInfoPtr& msg){
@@ -279,66 +290,90 @@ void infoCallback(const sensor_msgs::CameraInfoPtr& msg){
 
 void radarPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg)
 {
-	personRadx=msg->poses[0].position.x;
-	personRady=msg->poses[0].position.y;
-	
+  if (msg->poses.size() == 0) return;
+  rad.clear();
+ 	for(int i = 0;i<msg->poses.size();i++)
+    {
+      vector<float> ps(3,0);
+      ps[0]=msg->poses[i].position.x;
+      ps[1]=msg->poses[i].position.y;
+      ps[2]=msg->poses[i].position.z;
+      rad.push_back(ps);
+    }
+
 }
 
 void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
-
-	
+  if (msg->people.size() == 0) return;
+  leg.clear();
+  ccovL.clear();
  	for(int i = 0;i<msg->people.size();i++)
-        {
-	personLegx=msg->people[0].pos.x;
- 	personLegy=msg->people[0].pos.y;
-	covL=msg->people[0].covariance[0];
-	//cout << "Covariance Leg " << covL << endl;
-	personLegxx=msg->people[1].pos.x;
- 	personLegyy=msg->people[1].pos.y;
-	covLL=msg->people[1].covariance[0];
-	}
-	
+    {
+      vector<float> ps(3,0);
+      ps[0]=msg->people[i].pos.x;
+      ps[1]=msg->people[i].pos.y;
+      ps[2]=msg->people[i].pos.z;
+      ccovL.push_back(msg->people[i].covariance[0]);
+         leg.push_back(ps);
+    }
+
 }
 
 void deepPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg){
+  if (msg->poses.size() == 0) return;
+  deep.clear();
+ 	for(int i = 0;i<msg->poses.size();i++)
+    {
+      vector<float> ps(3,0);
+      ps[0]=msg->poses[i].position.x;
+      ps[1]=msg->poses[i].position.y;
+      ps[2]=msg->poses[i].position.z;
+      deep.push_back(ps);
+    }
 
-	personDeepx = msg->poses[0].position.x;
-	personDeepy = msg->poses[0].position.y;
-	//personDeepx=msg->points[0].x;
- 	//personDeepy=msg->points[0].y;
-	//cout << "Covariance Leg " << covL << endl;
-	
 }
 
 void varianceCallback(const geometry_msgs::PoseArrayConstPtr& msg){
-
-	covR=msg->poses[0].position.x;
-	covRR=msg->poses[1].position.x;
+  ccovR.clear();
+  for(int i = 0;i<msg->poses.size();i++)
+    {
+      ccovR.push_back(msg->poses[i].position.x);
+    }
 }
 
 void varianceDeepCallback(const geometry_msgs::PoseArrayConstPtr& msg){
-
-	covD=msg->poses[0].position.x;
-	covDD=msg->poses[1].position.x;
+  ccovD.clear();
+  for(int i = 0;i<msg->poses.size();i++)
+    {
+      ccovD.push_back(msg->poses[i].position.x);
+    }
 }
-int main(int argc, char **argv) 
+int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "evaluator");
 	ros::NodeHandle nh_;
 	groundTruthSub = nh_.subscribe<visualization_msgs::MarkerArray>("/ground", 1, groundTruthCb);
 	detectorSub = nh_.subscribe<visualization_msgs::MarkerArray>("/detector", 1, detectorCb);
 
-	image_transport::ImageTransport it_(nh_);
+  std::vector<float> ps(1,0);
+  leg.push_back(ps);
+  cam.push_back(ps);
+  deep.push_back(ps);
+  rad.push_back(ps);
+  float a = 0;
+  ccovR.push_back(a);
+  ccovD.push_back(a);
+  ccovL.push_back(a);
+  image_transport::ImageTransport it_(nh_);
 	depth_pub_  = it_.advertise("/person/depth/image_rect_raw", 1);
-	sub_depth_ = it_.subscribe("/camera/depth/image_rect_raw", 1, imageCallback);
-	info_sub_ = nh_.subscribe("/camera/depth/camera_info",1,infoCallback);
 	info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/person/depth/camera_info",1);
 	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",1,radarPoseCallback);
 	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
 	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/deep/trajectory_acc",1,varianceDeepCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
 	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",1, deepPoseCallback);
-  camera_ground_truth_publihser_ = nh_.advertise<geometry_msgs::PoseArray>("/person/ground_truth",1);
+  gt_subscriber_ = nh_.subscribe<geometry_msgs::PoseArray>("/person/ground_truth",1,groundTruthCallback);
+  evaluator_mux_publisher_ = nh_.advertise<radar::radar_fusion>("/evaulator_mux",1);
 
 
 	ros::spin();
