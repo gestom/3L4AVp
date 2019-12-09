@@ -238,7 +238,7 @@ def listener():
 		pointsPublisher = rospy.Publisher('/deep_radar/out/points', msgTemplate.Marker, queue_size=0)
 
 		rospy.init_node('radar_analysis', anonymous=False)
-		rospy.Subscriber("/radar/RScan", PointCloud2, radarCallback)
+		rospy.Subscriber("/radar/RScan/aligned", PointCloud2, radarCallback)
 		rospy.spin()
 
 if __name__ == '__main__': 

@@ -29,10 +29,10 @@ tfListener = None
 legDetectorBuffers = []
 legDetectorFrame = None
 maxTimeSinceLaser = rospy.Duration(0, 250000000) #secs, nanosecs
-maxDistanceToObj = 0.5
+maxDistanceToObj = 0.4
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
-maxNumPoints = 50
+maxNumPoints = 40
 
 def legDetectorCallback(msg):
 	global legDetectorBuffers, legDetectorFrame
@@ -130,7 +130,7 @@ class PointnetThread(threading.Thread):
 
 		self.baseLearningRate = 0.0001
 		self.decayStep = 300000.0
-		self.decayRate = 0.9
+		self.decayRate = 0.75
 
 		self.config = tf.ConfigProto()
 		self.config.gpu_options.allow_growth = True
@@ -245,7 +245,7 @@ class PointnetThread(threading.Thread):
 			file_size = current_data.shape[0]
 			num_batches = file_size
 
-			print(current_label)
+			#print(current_label)
 
 			feed_dict = {self.ops['pointclouds_pl']: current_data[0:self.batchSize, :, :],
 				self.ops['labels_pl']: current_label[0:self.batchSize],
@@ -253,7 +253,7 @@ class PointnetThread(threading.Thread):
 
 			summary, step, _, loss_val, pred_val = self.sess.run([self.ops['merged'], self.ops['step'], self.ops['train_op'], self.ops['loss'], self.ops['pred']],
 				feed_dict=feed_dict)
-			print(loss_val)
+			#print(loss_val)
 			self.file.write(str(loss_val) + "\n")
 
 			return pred_val
@@ -289,7 +289,7 @@ class PointnetThread(threading.Thread):
 
 	def publish(self, points, originalMsg):
 
-		print(points.shape)
+		#print(points.shape)
 
 		points = points[-1]
 		points = points[:, :self.nClasses]
@@ -303,9 +303,9 @@ class PointnetThread(threading.Thread):
 
 			#simply on strongest prob
 			# classPoints[np.argmax(p)].append([points[i][0], points[i][1], points[i][2]])
-			
+
 			#using threshold
-			print(p)
+			#print(p)
 			pos = originalMsg[0]
 			if p[1] > self.threshold:
 				classPoints[1].append([pos[i][0], pos[i][1], pos[i][2]])
@@ -368,7 +368,7 @@ if __name__ == '__main__':
 
 	tfListener = rostf.TransformListener()
 
-	rospy.Subscriber("/radar/RScan", PointCloud2, radarCallback)
+	rospy.Subscriber("/radar/RScan/aligned", PointCloud2, radarCallback)
 	rospy.Subscriber("/visualization_marker", msgTemplate.Marker, legDetectorCallback)
 
 	pointsPublisher = rospy.Publisher('/deep_radar/out/points', msgTemplate.Marker, queue_size=0)

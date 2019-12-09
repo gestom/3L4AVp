@@ -20,7 +20,7 @@ from geometry_msgs.msg import Point
 # laserPublisherType = "laserscan"
 laserPublisher = "/visualization_marker"
 laserPublisherType = "leg_detector"
-radarPublisher = "/radar/RScan"
+radarPublisher = "/radar/RScan/aligned"
 
 #restrict laser search to inside these boundaries (px = positive x, etc)
 #use it to remove ground, walls etc
