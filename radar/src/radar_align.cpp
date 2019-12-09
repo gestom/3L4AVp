@@ -12,13 +12,22 @@ ros::Subscriber radar_sub_;
 
 
 void callback(const sensor_msgs::PointCloud2ConstPtr& msg){
-
+  tf::StampedTransform transform;
   const  tf::TransformListener tf_listener;
   sensor_msgs::PointCloud2 t_pc;
   sensor_msgs::PointCloud2 pc;
   pc = *msg;
   pc.header.stamp = ros::Time(0);
   pc.header.frame_id = "base_radar_link";
+
+
+  try{
+    tf_listener.waitForTransform("base_radar_link", "map", ros::Time(0), ros::Duration(5.0), ros::Duration(2)); // base on line 193 of /tf/tf.h
+    tf_listener.lookupTransform("base_radar_link", "map", ros::Time(0), transform); // based on line 129 /tf/tf.h
+  }
+  catch(tf::LookupException){
+    std::cerr << "Transform lookup failed" << std::endl;
+  }
   pcl_ros::transformPointCloud("map", pc, t_pc, tf_listener);
   radar_pub_.publish(t_pc);
 }
