@@ -65,6 +65,7 @@ include_directories(
 
 ## Declare a C++ executable
 add_executable(radarology src/radarology.cpp)
+add_executable(radar_align src/radar_align.cpp)
 add_executable(ground_truth src/ground_truth.cpp)
 add_executable(legFilter src/legFilter.cpp)
 add_executable(radar_detector_ol src/radar_detector_ol.cpp src/svm.cpp)
@@ -78,6 +79,7 @@ add_dependencies(evaluator ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}
 add_dependencies(legFilter ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 add_dependencies(radar_detector_ol ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 add_dependencies(laser_labelling ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
+add_dependencies(radar_align ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(radarology ${catkin_LIBRARIES} )
@@ -86,4 +88,4 @@ target_link_libraries(evaluator ${catkin_LIBRARIES} )
 target_link_libraries(legFilter ${catkin_LIBRARIES} )
 target_link_libraries(radar_detector_ol ${catkin_LIBRARIES} )
 target_link_libraries(laser_labelling ${catkin_LIBRARIES} )
-
+target_link_libraries(radar_align ${catkin_LIBRARIES} )

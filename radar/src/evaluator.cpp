@@ -16,6 +16,9 @@
 #include <visualization_msgs/Marker.h>
 #include <vector>
 #include <radar/radar_fusion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/transform_listener.h>
+#include "geometry_msgs/PoseStamped.h"
 using namespace cv;
 using namespace std;
 ros::Subscriber groundTruthSub;
@@ -224,17 +227,31 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
 	float y = 0;
 	float x = 0;
 	int numPoints=0;
-
-
-
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tf2_listener(tfBuffer);
+  geometry_msgs::TransformStamped transformStamp;
+  geometry_msgs::PoseStamped ps;
+  ps.header= msg->header;
+  try{
+  transformStamp =
+    tfBuffer.lookupTransform("laser", "map", msg->header.stamp, ros::Duration(1.0) );
+  }
+    catch (tf2::TransformException &ex) {
+      ROS_WARN("%s",ex.what());
+      ros::Duration(1.0).sleep();
+      return;
+  }
     cam.clear();
     std::vector<float> ccovC;
     for(int i = 0;i<msg->poses.size();i++)
      {
+       ps.pose=msg->poses[i];
+       tf2::doTransform(ps, ps, transformStamp);
+       
         vector<float> vec(3,0);
-        vec[0]=msg->poses[i].position.z;
-        vec[1]=-msg->poses[i].position.x;
-        vec[2]=0;
+        vec[0]=ps.pose.position.x;
+        vec[1]=ps.pose.position.y;
+        vec[2]=ps.pose.position.z;
         cam.push_back(vec);
         ccovC.push_back(0);
       }
@@ -369,7 +386,7 @@ int main(int argc, char **argv)
 	info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/person/depth/camera_info",1);
 	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",1,radarPoseCallback);
 	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
-	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/deep/trajectory_acc",1,varianceDeepCallback);
+	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",1,varianceDeepCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
 	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",1, deepPoseCallback);
   gt_subscriber_ = nh_.subscribe<geometry_msgs::PoseArray>("/person/ground_truth",1,groundTruthCallback);
