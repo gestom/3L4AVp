@@ -91,7 +91,7 @@ void addBoundingBoxMarker(visualization_msgs::MarkerArray::Ptr markerArray,float
     p[21].x = minX; p[21].y = maxY; p[21].z = minZ;
     p[22].x = maxX; p[22].y = maxY; p[22].z = minZ;
     p[23].x = maxX; p[23].y = minY; p[23].z = minZ;
-    for(int i = 0; i < 24; i++) marker.points.push_back(p[i]);
+    for(unsigned int i = 0; i < 24; i++) marker.points.push_back(p[i]);
     marker.scale.x = 0.02;
     marker.color.a = 1.0;
     marker.color.r = 0.0;
@@ -107,32 +107,10 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	//Convert msg to pcl
 	//Radar returns intensity,range and velocity (m/s), so we use pcl point with 3 floats apart of coordinates
 	//cout << "New pcl received" << endl;
-  sensor_msgs::PointCloud2 buffer;
-  tf::StampedTransform transform;
 
-  tf::TransformListener listener;
-  
-  try{
-    
-    listener.waitForTransform("map", msg->header.frame_id,
-                              msg->header.stamp, ros::Duration(3.0));
-    listener.lookupTransform("map",  msg->header.frame_id,
-                             msg->header.stamp, transform);
-  }
-  catch (tf::TransformException ex){
-    ROS_ERROR("%s",ex.what());
-    ros::Duration(1.0).sleep();
-  }
-  
-  
-  pcl_ros::transformPointCloud("map",*msg ,buffer, listener);
   pcl::PointCloud<pcl::PointXYZHSV>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZHSV>);
 
-  pcl::fromROSMsg(buffer, *pcl_pc);
-
-	pcl::PointCloud<pcl::PointXYZHSV>::Ptr pcl_pcT(new pcl::PointCloud<pcl::PointXYZHSV>);
- 
-
+  pcl::fromROSMsg(*msg, *pcl_pc);
  	pcl::PointCloud<PointTypeFull>::Ptr cloud_with_normals (new pcl::PointCloud<PointTypeFull>);
 	pcl::IndicesClustersPtr clusters (new pcl::IndicesClusters);
 	pcl::PointCloud<PointTypeFull>::Ptr	cloud_out (new pcl::PointCloud<PointTypeFull>);
@@ -198,7 +176,6 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		if(meanX>5 || meanX<1 || meanY>1.5){
 		continue;
 		}
-		float intensity = 0.1;
 		pcl_msg->header.frame_id = "map";
 		pcl_msg->height = 1;
 		pcl_msg->width = 0;
@@ -247,7 +224,7 @@ void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 {
 	if(msg->people.size() == 0) lifeLong=0;
 	//printf("People: %i: ",(int)msg->people.size());
-	for (int i = 0;i<msg->people.size();i++)
+	for(unsigned int i = 0;i<msg->people.size();i++)
 	{
 	//	printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
 		personX = msg->people[0].pos.x;
