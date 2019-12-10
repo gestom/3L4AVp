@@ -31,10 +31,17 @@ def callback(msg):
 		for i in msg.points:
 			buf.append([i.x, i.y])
 
-		print buf
+		if len(buf) == 0:
+			return
+
+		# print("buf:")
+		# print buf
 		clusterer = DBSCAN(eps=0.4, min_samples=5).fit(buf)
 		clusterNames = list(set(clusterer.labels_))
 		clusters = {}
+
+		if len(clusterNames) == 0:
+			return
 
 		for i in clusterNames:
 			clusters[i] = []
@@ -46,7 +53,15 @@ def callback(msg):
 
 		positions = []
 
-		for i in xrange(0, len(clusters)):
+		for key in clusters:
+
+			cluster = clusters[key]
+
+			if key == "-1":
+				continue
+
+			if len(cluster) < 5:
+				continue
 
 			msg = msgTemplate.Marker()
 
@@ -71,13 +86,12 @@ def callback(msg):
 
 			totalX = 0
 			totalY = 0
-			for j in clusters[i]:
+
+			for j in cluster:
 				totalX += j.x
 				totalY += j.y
-			print totalX, totalY
-			meanX = totalX / len(clusters[i])
-			meanY = totalY / len(clusters[i])
-			print meanX, meanY
+			meanY = totalY / len(cluster)
+			meanX = totalX / len(cluster)
 
 			positions.append([meanX, meanY])
 

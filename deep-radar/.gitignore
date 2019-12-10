@@ -1,5 +1,7 @@
 *.pyc
+*.png
 src/tmp/
 src/rosbags/
 src/models/
 src/datasets/
+src/losslog*
