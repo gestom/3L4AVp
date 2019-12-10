@@ -18,7 +18,8 @@
 #include <pcl/point_types.h>
 #include <people_msgs/PositionMeasurementArray.h>
 #include <pcl/segmentation/conditional_euclidean_clustering.h>
-
+#include <pcl_ros/transforms.h>
+#include <tf/transform_listener.h>
 using namespace std;
 float clusterRadius=0.5;
 float personDistance=0.5;
@@ -40,7 +41,6 @@ typedef pcl::PointCloud<PointTypeFull> PointCloud;
 float personX,personY;
 PointCloud::Ptr pcl_msg (new PointCloud);
 PointCloud::Ptr pcl_msg_unk (new PointCloud);
-
 
 void callback(radar::radiusConfig &config, uint32_t level) {
 	
@@ -91,7 +91,7 @@ void addBoundingBoxMarker(visualization_msgs::MarkerArray::Ptr markerArray,float
     p[21].x = minX; p[21].y = maxY; p[21].z = minZ;
     p[22].x = maxX; p[22].y = maxY; p[22].z = minZ;
     p[23].x = maxX; p[23].y = minY; p[23].z = minZ;
-    for(int i = 0; i < 24; i++) marker.points.push_back(p[i]);
+    for(unsigned int i = 0; i < 24; i++) marker.points.push_back(p[i]);
     marker.scale.x = 0.02;
     marker.color.a = 1.0;
     marker.color.r = 0.0;
@@ -107,16 +107,18 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	//Convert msg to pcl
 	//Radar returns intensity,range and velocity (m/s), so we use pcl point with 3 floats apart of coordinates
 	//cout << "New pcl received" << endl;
-	pcl::PointCloud<pcl::PointXYZHSV>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZHSV>);
-	pcl::fromROSMsg(*msg, *pcl_pc);
-	pcl::PointCloud<PointTypeFull>::Ptr cloud_with_normals (new pcl::PointCloud<PointTypeFull>);
+
+  pcl::PointCloud<pcl::PointXYZHSV>::Ptr pcl_pc(new pcl::PointCloud<pcl::PointXYZHSV>);
+
+  pcl::fromROSMsg(*msg, *pcl_pc);
+ 	pcl::PointCloud<PointTypeFull>::Ptr cloud_with_normals (new pcl::PointCloud<PointTypeFull>);
 	pcl::IndicesClustersPtr clusters (new pcl::IndicesClusters);
 	pcl::PointCloud<PointTypeFull>::Ptr	cloud_out (new pcl::PointCloud<PointTypeFull>);
 	visualization_msgs::MarkerArray::Ptr markerArray(new visualization_msgs::MarkerArray);
-	if(training_status){
+	/*if(training_status){
 	point_unknown_pub_.publish(msg);
 	return;
-	} 	
+	} */	
 	//Set up pcl
 	pcl::IndicesPtr pc_indices(new std::vector<int>);
 	pcl::PassThrough<pcl::PointXYZHSV> pt;
@@ -134,7 +136,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	cec.segment (*clusters);
 	//std::cerr << ">> Done: " << tt.toc () << " ms\n";
 	//printf("Clusters size: %i: ",clusters->size());
-	pcl_msg_unk->header.frame_id = "laser";
+	pcl_msg_unk->header.frame_id = "map";
 	pcl_msg_unk->height = 1;
 	pcl_msg_unk->width = 0;
 	pcl_msg_unk->points.clear();
@@ -174,8 +176,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		if(meanX>5 || meanX<1 || meanY>1.5){
 		continue;
 		}
-		float intensity = 0.1;
-		pcl_msg->header.frame_id = "laser";
+		pcl_msg->header.frame_id = "map";
 		pcl_msg->height = 1;
 		pcl_msg->width = 0;
 		pcl_msg->points.clear();
@@ -186,9 +187,12 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		if((lifeLong <10) ||((currentT-legT)>ros::Duration(1.0))){
 			for (int j = 0; j <(int)((*clusters)[i]).indices.size(); ++j){
 				pcl_msg_unk->points.push_back (pcl_pc->points[(*clusters)[i].indices[j]]);
-				pcl_msg_unk->width++;	
+				pcl_msg_unk->width++;
 			}
-		}else{
+      std::cout<<lifeLong<<std::endl;
+      std::cout<<currentT<<std::endl;
+      std::cout<<legT<<std::endl;
+    }else{
 			if (sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)) > personDistance)
 			{
 				point_negative_pub_.publish (pcl_msg);
@@ -210,9 +214,7 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	marker_array_pub_.publish(markerArray);
 }
 
-void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
-{
-}
+
 void trainingStatusCallback(const std_msgs::Bool::ConstPtr& msg)
 {
 	training_status = msg->data;
@@ -222,7 +224,7 @@ void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 {
 	if(msg->people.size() == 0) lifeLong=0;
 	//printf("People: %i: ",(int)msg->people.size());
-	for (int i = 0;i<msg->people.size();i++)
+	for(unsigned int i = 0;i<msg->people.size();i++)
 	{
 	//	printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
 		personX = msg->people[0].pos.x;
@@ -236,7 +238,6 @@ void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 int main(int argc, char **argv) {
   ros::init(argc, argv, "radarology");
   ros::NodeHandle nh_;
-
   // Dynamic reconfiguration server
   dynamic_reconfigure::Server<radar::radiusConfig> server;
   dynamic_reconfigure::Server<radar::radiusConfig>::CallbackType f = boost::bind(&callback, _1, _2);
@@ -244,9 +245,8 @@ int main(int argc, char **argv) {
 
   marker_array_pub_   = nh_.advertise<visualization_msgs::MarkerArray>("/person", 1);
   //radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/camera/pointcloud", 1, allRadarCallback);
-  radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/radar/RScan", 1, allRadarCallback);
+  radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/radar/RScan/aligned", 1, allRadarCallback);
   training_status_sub_ = nh_.subscribe<std_msgs::Bool>("/radar_detector_ol/training_status", 1, trainingStatusCallback);
-  laser_sub_ = nh_.subscribe<sensor_msgs::LaserScan>("/scan", 1, laserCallback);
   tracker_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1, trackerCallback);
   point_positive_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/positive", 100000);
   point_negative_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZ> > ("/negative", 100000);

@@ -16,6 +16,9 @@
 #include <visualization_msgs/Marker.h>
 #include <vector>
 #include <radar/radar_fusion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/transform_listener.h>
+#include "geometry_msgs/PoseStamped.h"
 using namespace cv;
 using namespace std;
 ros::Subscriber groundTruthSub;
@@ -27,10 +30,10 @@ ros::Publisher info_pub_;
 ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_,variance_deep_sub_, deep_radar_sub_, gt_subscriber_;
 
 
-std::vector<std::vector<float>> rad;
-std::vector<std::vector<float>> cam;
-std::vector<std::vector<float>> leg;
-std::vector<std::vector<float>> deep;
+std::vector<std::vector<float> > rad;
+std::vector<std::vector<float> > cam;
+std::vector<std::vector<float> > leg;
+std::vector<std::vector<float> > deep;
 std::vector<float> ccovR;
 std::vector<float> ccovD;
 std::vector<float> ccovL;
@@ -147,7 +150,7 @@ void addBoundingBoxMarker(visualization_msgs::MarkerArray::Ptr markerArray,float
     p[21].x = minX; p[21].y = maxY; p[21].z = minZ;
     p[22].x = maxX; p[22].y = maxY; p[22].z = minZ;
     p[23].x = maxX; p[23].y = minY; p[23].z = minZ;
-    for(int i = 0; i < 24; i++) marker.points.push_back(p[i]);
+    for(unsigned int i = 0; i < 24; i++) marker.points.push_back(p[i]);
     marker.scale.x = 0.02;
     marker.color.a = 1.0;
     marker.color.r = 0.0;
@@ -163,7 +166,7 @@ void checkQueues()
 	vector<int> removeDet;
 	//printf("Queues: %d %d\n",groundTruth.size(),detection.size());
 	int i = 0;
-	int j = 0;
+  int j = 0;
 
 	while (i<groundTruth.size())
 	{
@@ -172,10 +175,6 @@ void checkQueues()
 		{
 			if (detection[j].timestampSecs == groundTruth[i].timestampSecs && detection[j].timestampNsecs == groundTruth[i].timestampNsecs)
 			{
-				SBox a = groundTruth[i];
-				SBox b = detection[j];
-				SBox c = boxOverlap(a,b);
-	//			printf("Overlap: %.3f\n",boxVolume(c)/(boxVolume(a)+boxVolume(b)-boxVolume(c)));
 				groundTruth.erase(groundTruth.begin()+i);
 				detection.erase(detection.begin()+j);
 				i--;
@@ -198,10 +197,10 @@ void detectorCb(const visualization_msgs::MarkerArray::ConstPtr& msg)
 	for (int i = 0;i<(int)msg->markers.size();i++)detection.push_back(formBox(msg->markers[i]));
 	checkQueues();
 }
-std::vector<geometry_msgs::PoseWithCovariance>  constructPoseWCovariance (std::vector<std::vector<float>> vec, std::vector<float> cov){
+std::vector<geometry_msgs::PoseWithCovariance>  constructPoseWCovariance (std::vector<std::vector<float> > vec, std::vector<float> cov){
 
   std::vector<geometry_msgs::PoseWithCovariance> field;
-  for(int i = 0;i<vec.size();i++){
+  for(unsigned int i = 0;i<vec.size();i++){
 
     geometry_msgs::PoseWithCovariance pose;
     pose.pose.position.x = vec[i][0];
@@ -219,22 +218,32 @@ std::vector<geometry_msgs::PoseWithCovariance>  constructPoseWCovariance (std::v
 }
 void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
 {
-	numOfCycles++; //not needed
-	float z = 0;
-	float y = 0;
-	float x = 0;
-	int numPoints=0;
-
-
-
+	numOfCycles++; 
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tf2_listener(tfBuffer);
+  geometry_msgs::TransformStamped transformStamp;
+  geometry_msgs::PoseStamped ps;
+  ps.header= msg->header;
+  try{
+  transformStamp =
+    tfBuffer.lookupTransform("laser", "map", msg->header.stamp, ros::Duration(1.0) );
+  }
+    catch (tf2::TransformException &ex) {
+      ROS_WARN("%s",ex.what());
+      ros::Duration(1.0).sleep();
+      return;
+  }
     cam.clear();
     std::vector<float> ccovC;
-    for(int i = 0;i<msg->poses.size();i++)
+    for(unsigned int i = 0;i<msg->poses.size();i++)
      {
+       ps.pose=msg->poses[i];
+       tf2::doTransform(ps, ps, transformStamp);
+       
         vector<float> vec(3,0);
-        vec[0]=msg->poses[i].position.z;
-        vec[1]=-msg->poses[i].position.x;
-        vec[2]=0;
+        vec[0]=ps.pose.position.x;
+        vec[1]=ps.pose.position.y;
+        vec[2]=ps.pose.position.z;
         cam.push_back(vec);
         ccovC.push_back(0);
       }
@@ -292,7 +301,7 @@ void radarPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg)
 {
   if (msg->poses.size() == 0) return;
   rad.clear();
- 	for(int i = 0;i<msg->poses.size();i++)
+ 	for(unsigned int i = 0;i<msg->poses.size();i++)
     {
       vector<float> ps(3,0);
       ps[0]=msg->poses[i].position.x;
@@ -307,7 +316,7 @@ void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
   if (msg->people.size() == 0) return;
   leg.clear();
   ccovL.clear();
- 	for(int i = 0;i<msg->people.size();i++)
+ 	for(unsigned int i = 0;i<msg->people.size();i++)
     {
       vector<float> ps(3,0);
       ps[0]=msg->people[i].pos.x;
@@ -322,7 +331,7 @@ void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
 void deepPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg){
   if (msg->poses.size() == 0) return;
   deep.clear();
- 	for(int i = 0;i<msg->poses.size();i++)
+ 	for(unsigned int i = 0;i<msg->poses.size();i++)
     {
       vector<float> ps(3,0);
       ps[0]=msg->poses[i].position.x;
@@ -335,7 +344,7 @@ void deepPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg){
 
 void varianceCallback(const geometry_msgs::PoseArrayConstPtr& msg){
   ccovR.clear();
-  for(int i = 0;i<msg->poses.size();i++)
+  for(unsigned int i = 0;i<msg->poses.size();i++)
     {
       ccovR.push_back(msg->poses[i].position.x);
     }
@@ -343,7 +352,7 @@ void varianceCallback(const geometry_msgs::PoseArrayConstPtr& msg){
 
 void varianceDeepCallback(const geometry_msgs::PoseArrayConstPtr& msg){
   ccovD.clear();
-  for(int i = 0;i<msg->poses.size();i++)
+  for(unsigned int i = 0;i<msg->poses.size();i++)
     {
       ccovD.push_back(msg->poses[i].position.x);
     }
@@ -369,7 +378,7 @@ int main(int argc, char **argv)
 	info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/person/depth/camera_info",1);
 	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",1,radarPoseCallback);
 	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/trajectory_acc",1,varianceCallback);
-	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/deep/trajectory_acc",1,varianceDeepCallback);
+	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",1,varianceDeepCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
 	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",1, deepPoseCallback);
   gt_subscriber_ = nh_.subscribe<geometry_msgs::PoseArray>("/person/ground_truth",1,groundTruthCallback);

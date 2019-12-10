@@ -9,14 +9,14 @@
   
   <param name="use_sim_time" value="true"/>
   <!-- ROS leg detector -->
-  <node pkg="leg_detector" type="leg_detector" name="leg_detector" args="scan:=/scan/filter $(find leg_detector)/config/trained_leg_detector.yaml" output="screen">
+  <node pkg="leg_detector" type="leg_detector" name="leg_detector" args="scan:=/scan/filter $(find leg_detector)/config/trained_leg_detector.yaml">
     <param name="publish_leg_markers" type="bool" value="true"/>
     <param name="leg_reliability_limit" type="double" value="0.3"/>
     <param name="publish_people_markers" type="bool" value="true"/>
-    <param name="fixed_frame" type="string" value="laser"/>
+    <param name="fixed_frame" type="string" value="map"/>
   </node>
   
-  <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" output="screen" respawn="false">
+  <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" respawn="false">
     <param name="print_fps" type="bool" value="false"/>
     <param name="max_trains" type="int" value="5"/>
     <param name="round_positives" type="int" value="10"/>
@@ -31,12 +31,13 @@
 
   <node pkg="radar" type="radarology" name="radarology" output="screen"/>
   <node pkg="radar" type="ground_truth" name="ground_truth"/>
+  <node pkg="radar" type="radar_align" name="radar_align"/>
 
-  <node pkg="radar" type="legFilter" name="legFilter" output="screen"/>
+  <node pkg="radar" type="legFilter" name="legFilter"/>
   <!-- node pkg="camera_pcl" type="camera_pcl" name="camera_pcl" output="log"/ -->
 
-  <node pkg="evaluation_ros" type="sensor_fusion" name="sensor_fusion" output="screen"/>
-  <node pkg="person_splitter" type="ppl_spliter" name="ppl_spliter" output="screen">
+  <node pkg="evaluation_ros" type="sensor_fusion" name="sensor_fusion" />
+  <node pkg="person_splitter" type="ppl_spliter" name="ppl_spliter" >
     <param name="solo" type= "string" value="$(arg single)"/>
   </node>
 
@@ -49,15 +50,15 @@
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_velodyne" args="0 0 0 0 0 0 map velodyne 100"/>
  
   <!-- Static transform from map to base_radar_link for visualization of stand-alone mmWave sensor using Rviz -->
-  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args="0.12 -0.05 0 0.2 0 0 map base_radar_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args="0.12 -0.05 0 0 0 0 map base_radar_link 100"/>
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_laser" args="0 0 0 0 0 0 map laser 100"/>
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_camera_depth_optical_frame" args="0.08 -0.08 0.32 -1.57 0 -1.57  map camera_depth_optical_frame 100"/>
   
   <!-- Launch Rviz with pre-defined configuration to view mmWave sensor detected object data (color by elevation) -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find radar)/launch/radar_all.rviz"/> 
 
-    <node pkg="deep-radar" name="train" type="onlineTraining.py" output="screen"/>
-    <node pkg="deep-radar" name="clustering" type="clustering.py" output="screen"/>
+    <node pkg="deep-radar" name="train" type="onlineTraining.py" />
+    <node pkg="deep-radar" name="clustering" type="clustering.py"/>
     <!--<node pkg="deep-radar" name="confusion" type="confusion.py" output="screen"/>-->
   
 </launch>
