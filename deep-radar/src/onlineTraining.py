@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import random
 import rospy
 import math
 import os
@@ -29,10 +30,13 @@ tfListener = None
 legDetectorBuffers = []
 legDetectorFrame = None
 maxTimeSinceLaser = rospy.Duration(0, 250000000) #secs, nanosecs
-maxDistanceToObj = 0.4
+maxDistanceToObj = 0.5
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
-maxNumPoints = 40
+maxNumPoints = 30
+pointsAllowedToDuplicate = 10
+biasX, biasY = 0.0, 0.0
+biasCount = 0
 
 def legDetectorCallback(msg):
 	global legDetectorBuffers, legDetectorFrame
@@ -44,7 +48,7 @@ def legDetectorCallback(msg):
 	legDetectorBuffers[msg.id] = msg
 
 def radarCallback(msg):
-	global legDetectorBuffers, legDetectorFrame, tfListener, pointnetQueue, maxNumPoints
+	global legDetectorBuffers, legDetectorFrame, tfListener, pointnetQueue, maxNumPoints, biasX, biasY, biasCount
 
 	if legDetectorFrame == None or len(legDetectorBuffers) == 0:
 		print("Awaiting leg detector inputs...")
@@ -72,6 +76,9 @@ def radarCallback(msg):
 	labels = []
 	objectPresent = False
 
+	totalDiffX, totalDiffY = 0.0, 0.0
+	nInCluster = 0
+
 	point_generator = pc2.read_points(msg)
 	for point in point_generator:
 
@@ -92,6 +99,9 @@ def radarCallback(msg):
 
 			if distance < maxDistanceToObj:
 				isObject = True
+				totalDiffX += diffX
+				totalDiffY += diffY
+				nInCluster += 1
 
 		x, y, z = point[0], point[1], point[2]
 		r, g, b = point[3], point[4], point[5] #intensity, range, doppler
@@ -107,10 +117,95 @@ def radarCallback(msg):
 		else:
 			labels.append(0)
 
+	if nInCluster > 0:
+		totalDiffX = totalDiffX / nInCluster
+		totalDiffY = totalDiffY / nInCluster
+
+		biasX = ((biasX * biasCount) + (totalDiffX)) / (biasCount + 1)
+		biasY = ((biasY * biasCount) + (totalDiffY)) / (biasCount + 1)
+		biasCount += 1
+
+		# print(biasX, biasY)
+
 	#todo calculate normalised vals
 
-	if len(points) >= maxNumPoints and objectPresent == True:
-		pointnetQueue.put((np.array(points[:maxNumPoints]), np.array(labels[:maxNumPoints])))
+	if objectPresent == True:
+
+		if len(points) < maxNumPoints - pointsAllowedToDuplicate:
+			return
+
+		if len(points) < maxNumPoints:
+
+			# while len(points) < maxNumPoints:
+			# 	lowestRange = -1
+			# 	lowestRangeVal = 999
+			# 	highestIntensity = -1
+			# 	highestIntensityVal = -1
+
+			# 	for idx in range(len(points)):
+
+			# 		if labels[idx] == 0:
+			# 			continue
+
+			# 		i = points[idx]
+			# 		if i[3] < lowestRangeVal:
+			# 			lowestRangeVal = i[3]
+			# 			lowestRange = idx
+			# 		if i[4] > highestIntensityVal:
+			# 			highestIntensityVal = i[4]
+			# 			highestIntensity = idx
+
+			# 	if lowestIntensity == -1 or highestRange == -1:
+			# 		break
+
+			# 	points.append()
+
+			# 	del points[highestRange]
+			# 	del labels[highestRange]
+
+			idx = 0
+			while len(points) < maxNumPoints:
+				points.append(points[idx])
+				labels.append(labels[idx])
+				idx += 1
+
+			print(len(points), len(labels), "l")
+			pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
+
+		if len(points) == maxNumPoints:
+			# pointnetQueue.put((np.array(points[:maxNumPoints]), np.array(labels[:maxNumPoints])))
+			print(len(points), len(labels), "e")
+			pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
+
+		if len(points) > maxNumPoints:
+
+			while len(points) > maxNumPoints:
+				lowestIntensity = -1
+				lowestIntensityVal = 999
+				highestRange = -1
+				highestRangeVal = -1
+
+				for idx in range(len(points)):
+
+					if labels[idx] > 0:
+						continue
+
+					i = points[idx]
+					if i[3] < lowestIntensityVal:
+						lowestIntensityVal = i[3]
+						lowestIntensity = idx
+					if i[4] > highestRangeVal:
+						highestRangeVal = i[4]
+						highestRange = idx
+
+				if lowestIntensity == -1 or highestRange == -1:
+					return
+
+				del points[highestRange]
+				del labels[highestRange]
+
+			print(len(points), len(labels), "b")
+			pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
 
 class PointnetThread(threading.Thread):
 	def __init__(self, queue, publisher, nPoints):
@@ -120,17 +215,18 @@ class PointnetThread(threading.Thread):
 		self.pointBuffer = []
 		self.labelBuffer = []
 		self.frameNumber = 0
-		self.trainEveryNFrames = 1
+		self.trainEveryNFrames = 3
 		self.epochsPerMessage = 1
+		self.messageDB = []
 
-		self.batchSize = 10
-		self.threshold = 0.4
+		self.batchSize = 20
+		self.threshold = 0.3
 		self.numPoints = nPoints
 		self.nClasses = 2
 
-		self.baseLearningRate = 0.0001
+		self.baseLearningRate = 0.0005
 		self.decayStep = 300000.0
-		self.decayRate = 0.75
+		self.decayRate = 0.05
 
 		self.config = tf.ConfigProto()
 		self.config.gpu_options.allow_growth = True
@@ -141,7 +237,7 @@ class PointnetThread(threading.Thread):
 		self.device = tf.device("/gpu:0")
 		self.sess = tf.Session(graph=self.graph, config=self.config)
 
-		self.file = open("losslog", "a")
+		self.file = open("losslog", "w")
 
 		with self.graph.as_default():
 			with self.device:
@@ -175,6 +271,10 @@ class PointnetThread(threading.Thread):
 					staircase=True)
 				self.learning_rate = tf.maximum(self.learning_rate, 0.00001)
 				tf.summary.scalar('learning_rate', self.learning_rate)
+				# self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
+				#self.optimizer = tf.keras.optimizers.Adadelta()
+				#self.train_op = self.optimizer.minimize()
+				# self.train_op = self.optimizer.minimize(self.loss, [])
 				self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
 				self.train_op = self.optimizer.minimize(self.loss, global_step=self.batch)
 
@@ -206,7 +306,7 @@ class PointnetThread(threading.Thread):
 					msg = self.queue.get(block=False)
 				except:
 					break
-			
+
 				if msg == "quit":
 					print("Closing net")
 					return
@@ -220,8 +320,16 @@ class PointnetThread(threading.Thread):
 
 				originalMsg = msg
 
+			print("Message received")
+
 			if len(self.pointBuffer) < self.batchSize or originalMsg == None:
 				continue
+
+			self.messageDB.append(originalMsg)
+			if len(self.messageDB) < self.batchSize:
+				continue
+
+			print("Training")
 
 			#train
 			preds = []
@@ -230,17 +338,47 @@ class PointnetThread(threading.Thread):
 				preds = self.train()
 
 			#infer
-			# results = self.infer(originalMsg)
+			preds = self.inferTemp()
 
 			#publish
 			self.publish(preds, originalMsg)
+
+	def probMax(self, x):
+	        if x == 1:
+	                return 1
+	        else:
+	                return x + self.probMax(x - 1)
+
+	def getBatches(self):
+
+		batch = []
+		labels = []
+
+		print(range(self.batchSize))
+		for _ in range(self.batchSize):
+
+			idx = random.randint(0, self.probMax(len(self.messageDB)) - 1)
+			numerator = 0
+
+			for i in xrange(0, len(self.messageDB)):
+				numerator += i
+				if idx <= numerator:
+					print("appending")
+					batch.append(self.messageDB[i][0])
+					labels.append(self.messageDB[i][1])
+					break
+			print("y")
+
+		return batch, labels
 
 	def train(self):
 
 		for epoch in range(self.epochsPerMessage):
 
-			current_data = np.array(self.pointBuffer)
-			current_label = np.array(self.labelBuffer)
+			batch, labels = self.getBatches()
+
+			current_data = np.array(batch)
+			current_label = np.array(labels)
 
 			file_size = current_data.shape[0]
 			num_batches = file_size
@@ -253,10 +391,43 @@ class PointnetThread(threading.Thread):
 
 			summary, step, _, loss_val, pred_val = self.sess.run([self.ops['merged'], self.ops['step'], self.ops['train_op'], self.ops['loss'], self.ops['pred']],
 				feed_dict=feed_dict)
+
+
+			#print("lr: " + str(self.learning_rate[0]))
+			#print(self.learning_rate)
 			#print(loss_val)
 			self.file.write(str(loss_val) + "\n")
+			self.file.flush()
 
 			return pred_val
+
+	def inferTemp(self):
+
+		pointBuf = []
+		labelBuf = []
+		for i in range(len(self.pointBuffer)):
+			pointBuf.append(self.pointBuffer[-1])
+			labelBuf.append(self.labelBuffer[-1])
+
+		current_data = np.array(pointBuf)
+		current_label = np.array(labelBuf)
+
+		file_size = current_data.shape[0]
+		num_batches = file_size
+
+		#print(current_label)
+
+		feed_dict = {self.ops['pointclouds_pl']: current_data[0:self.batchSize, :, :],
+			self.ops['labels_pl']: current_label[0:self.batchSize],
+			self.ops['is_training_pl']: False}
+
+		summary, step, _, loss_val, pred_val = self.sess.run([self.ops['merged'], self.ops['step'], self.ops['train_op'], self.ops['loss'], self.ops['pred']],
+			feed_dict=feed_dict)
+		print(loss_val)
+		self.file.write(str(loss_val) + "\n")
+		self.file.flush()
+
+		return pred_val
 
 	# def infer(self, msg):
 
@@ -300,13 +471,16 @@ class PointnetThread(threading.Thread):
 
 		for i in range(0, len(points)):
 			p = points[i]
+			pos = originalMsg[0]
 
 			#simply on strongest prob
-			# classPoints[np.argmax(p)].append([points[i][0], points[i][1], points[i][2]])
+			# if p[1] > p[0]:
+			# 	classPoints[1].append([pos[i][0], pos[i][1], pos[i][2]])
+			# else:
+			# 	classPoints[0].append([pos[i][0], pos[i][1], pos[i][2]])
 
 			#using threshold
 			#print(p)
-			pos = originalMsg[0]
 			if p[1] > self.threshold:
 				classPoints[1].append([pos[i][0], pos[i][1], pos[i][2]])
 			else:
@@ -352,7 +526,7 @@ class PointnetThread(threading.Thread):
 
 			msg.points = []
 			for j in classPoints[i]:
-				msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+				msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
 
 			self.publisher.publish(msg)
 
@@ -368,7 +542,7 @@ if __name__ == '__main__':
 
 	tfListener = rostf.TransformListener()
 
-	rospy.Subscriber("/radar/RScan/aligned", PointCloud2, radarCallback)
+	rospy.Subscriber("/radar/RScan", PointCloud2, radarCallback)
 	rospy.Subscriber("/visualization_marker", msgTemplate.Marker, legDetectorCallback)
 
 	pointsPublisher = rospy.Publisher('/deep_radar/out/points', msgTemplate.Marker, queue_size=0)

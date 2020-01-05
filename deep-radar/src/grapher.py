@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 data = ""
-with open("losslog2", "r") as f:
+with open("temp", "r") as f:
 	data = f.read()
 
 data = data.split("\n")
