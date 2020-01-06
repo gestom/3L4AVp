@@ -226,7 +226,7 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
   ps.header= msg->header;
   try{
   transformStamp =
-    tfBuffer.lookupTransform("laser", "map", msg->header.stamp, ros::Duration(1.0) );
+    tfBuffer.lookupTransform("laser", "map", ros::Time(0), ros::Duration(1.0) );
   }
     catch (tf2::TransformException &ex) {
       ROS_WARN("%s",ex.what());

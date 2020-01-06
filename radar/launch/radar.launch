@@ -1,5 +1,4 @@
 <launch>
-  <arg name="perform_learning" default="true" />
   <arg name="single" default="true" />
 
   <!-- action and reconfigure clients to control the system
@@ -16,27 +15,26 @@
     <param name="fixed_frame" type="string" value="map"/>
   </node>
   
-  <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" respawn="false">
+  <node pkg="radar" type="radar_detector_ol" name="radar_detector_ol" respawn="true">
     <param name="print_fps" type="bool" value="false"/>
     <param name="max_trains" type="int" value="5"/>
     <param name="round_positives" type="int" value="10"/>
     <param name="round_negatives" type="int" value="10"/>
-    <param name="perform_learning" value="$(arg perform_learning)"/>
   </node>
   
-      <node pkg="radar" type="evaluator" name="evaluator" output="log" respawn="false">
+      <node pkg="radar" type="evaluator" name="evaluator" output="screen" respawn="true">
       <remap from="/detector" to="/radar_detector_ol/markers"/>
       <remap from="/ground" to="/person"/>
       </node>
 
-  <node pkg="radar" type="radarology" name="radarology" output="screen"/>
+  <node pkg="radar" type="radarology" name="radarology"/>
   <node pkg="radar" type="ground_truth" name="ground_truth"/>
   <node pkg="radar" type="radar_align" name="radar_align"/>
 
   <node pkg="radar" type="legFilter" name="legFilter"/>
   <!-- node pkg="camera_pcl" type="camera_pcl" name="camera_pcl" output="log"/ -->
 
-  <node pkg="evaluation_ros" type="sensor_fusion" name="sensor_fusion" />
+  <node pkg="evaluation_ros" type="sensor_fusion" name="sensor_fusion" output="screen"/>
   <node pkg="person_splitter" type="ppl_spliter" name="ppl_spliter" >
     <param name="solo" type= "string" value="$(arg single)"/>
   </node>
@@ -57,8 +55,8 @@
   <!-- Launch Rviz with pre-defined configuration to view mmWave sensor detected object data (color by elevation) -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find radar)/launch/radar_all.rviz"/> 
 
-    <node pkg="deep-radar" name="train" type="onlineTraining.py" />
-    <node pkg="deep-radar" name="clustering" type="clustering.py"/>
+    <node pkg="deep-radar" name="train" type="onlineTraining.py" output="log"/>
+    <node pkg="deep-radar" name="clustering" type="clustering.py" output="log"/>
     <!--<node pkg="deep-radar" name="confusion" type="confusion.py" output="screen"/>-->
   
 </launch>
