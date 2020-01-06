@@ -320,8 +320,6 @@ class PointnetThread(threading.Thread):
 
 				originalMsg = msg
 
-			print("Message received")
-
 			if len(self.pointBuffer) < self.batchSize or originalMsg == None:
 				continue
 
