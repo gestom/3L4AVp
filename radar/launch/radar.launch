@@ -22,7 +22,7 @@
     <param name="round_negatives" type="int" value="10"/>
   </node>
   
-      <node pkg="radar" type="evaluator" name="evaluator" output="screen" respawn="true">
+      <node pkg="radar" type="evaluator" name="evaluator" output="log" respawn="true">
       <remap from="/detector" to="/radar_detector_ol/markers"/>
       <remap from="/ground" to="/person"/>
       </node>
