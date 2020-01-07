@@ -34,7 +34,7 @@ maxDistanceToObj = 0.5
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
 maxNumPoints = 30
-pointsAllowedToDuplicate = 10
+pointsAllowedToDuplicate = 5
 biasX, biasY = 0.0, 0.0
 biasCount = 0
 
@@ -43,6 +43,7 @@ def legDetectorCallback(msg):
 	legDetectorFrame = msg.header.frame_id
 	if msg.ns != "PEOPLE":
 		return
+	#we store leg detections by the id so that we can track multiple
 	while msg.id >= len(legDetectorBuffers):
 		legDetectorBuffers.append(None)
 	legDetectorBuffers[msg.id] = msg
@@ -54,6 +55,7 @@ def radarCallback(msg):
 		print("Awaiting leg detector inputs...")
 		return
 
+	#make a list of recent leg detections 
 	now = rospy.get_rostime()
 	def filterOld(x):
 		if x == None or (now - maxTimeSinceLaser > x.header.stamp):
@@ -61,6 +63,7 @@ def radarCallback(msg):
 		return True
 	usedlegDetectorBufs = filter(filterOld, legDetectorBuffers)
 
+	#get transform from leg to radar
 	transform = None
 	try:
 		transform = tfListener.lookupTransform(msg.header.frame_id, legDetectorFrame, rospy.Time(0))
@@ -74,10 +77,12 @@ def radarCallback(msg):
 
 	points = []
 	labels = []
-	objectPresent = False
 
 	totalDiffX, totalDiffY = 0.0, 0.0
 	nInCluster = 0
+
+	minX, minY, minZ = 0, 0, 0
+	maxX, maxY, maxZ = 0, 0, 0
 
 	point_generator = pc2.read_points(msg)
 	for point in point_generator:
@@ -90,9 +95,7 @@ def radarCallback(msg):
 
 		now = rospy.get_rostime()
 
-		for obj in legDetectorBuffers:
-			if obj is None or now - maxTimeSinceLaser > obj.header.stamp:
-				continue
+		for obj in usedlegDetectorBufs:
 			diffX = abs(obj.pose.position.x - point[0])
 			diffY = abs(obj.pose.position.y - point[1])
 			distance = ((diffX ** 2) + (diffY ** 2)) ** 0.5
@@ -105,107 +108,94 @@ def radarCallback(msg):
 
 		x, y, z = point[0], point[1], point[2]
 		r, g, b = point[3], point[4], point[5] #intensity, range, doppler
-		xn, yn, zn = None, None, None
 		xn, yn, zn = 0, 0, 0
+
+		if x > maxX:
+			maxX = x
+		if y > maxY:
+			maxY = y
+		if z > maxZ:
+			maxZ = z
+		if x < minX:
+			minX = x
+		if y < minY:
+			minY = y
+		if z < minZ:
+			minZ = z			
 
 		point = np.array([x, y, z, r, g, b, xn, yn, zn], dtype=np.float32)
 		points.append(point)
 
 		if isObject:
-			objectPresent = True
 			labels.append(1)
 		else:
 			labels.append(0)
 
-	if nInCluster > 0:
-		totalDiffX = totalDiffX / nInCluster
-		totalDiffY = totalDiffY / nInCluster
+	if nInCluster == 0:
+		return
 
-		biasX = ((biasX * biasCount) + (totalDiffX)) / (biasCount + 1)
-		biasY = ((biasY * biasCount) + (totalDiffY)) / (biasCount + 1)
-		biasCount += 1
+	#calculate normalised values
+	sceneSizeX = maxX - minX
+	sceneSizeY = maxY - minY
+	sceneSizeZ = maxZ - minZ
+	for idx in range(len(points)):
+		points[idx][6] = (points[idx][0] - minX) / sceneSizeX
+		points[idx][7] = (points[idx][1] - minY) / sceneSizeY
+		points[idx][8] = (points[idx][2] - minZ) / sceneSizeZ
 
-		# print(biasX, biasY)
+	totalDiffX = totalDiffX / nInCluster
+	totalDiffY = totalDiffY / nInCluster
+	biasX = ((biasX * biasCount) + (totalDiffX)) / (biasCount + 1)
+	biasY = ((biasY * biasCount) + (totalDiffY)) / (biasCount + 1)
+	biasX = 0
+	biasY = 0
+	biasCount += 1
 
-	#todo calculate normalised vals
+	if len(points) < maxNumPoints - pointsAllowedToDuplicate:
+		return
 
-	if objectPresent == True:
+	if len(points) < maxNumPoints:
 
-		if len(points) < maxNumPoints - pointsAllowedToDuplicate:
-			return
+		#order list by feature
+		orderedFeatures = list(zip(points, labels))
+		orderedFeatures = sorted(orderedFeatures, key=lambda x: x[0][4])
 
-		if len(points) < maxNumPoints:
+		#duplicate them
+		idx = 0
+		while len(points) < maxNumPoints:
+			points.append(orderedFeatures[idx][0])
+			labels.append(orderedFeatures[idx][1])
+			idx += 1
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
 
-			# while len(points) < maxNumPoints:
-			# 	lowestRange = -1
-			# 	lowestRangeVal = 999
-			# 	highestIntensity = -1
-			# 	highestIntensityVal = -1
+	if len(points) == maxNumPoints:
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
 
-			# 	for idx in range(len(points)):
+	if len(points) > maxNumPoints:
+		while len(points) > maxNumPoints:
+			lowestIntensity = -1
+			lowestIntensityVal = 999
+			highestRange = -1
+			highestRangeVal = -1
 
-			# 		if labels[idx] == 0:
-			# 			continue
+			for idx in range(len(points)):
+				if labels[idx] > 0:
+					continue
 
-			# 		i = points[idx]
-			# 		if i[3] < lowestRangeVal:
-			# 			lowestRangeVal = i[3]
-			# 			lowestRange = idx
-			# 		if i[4] > highestIntensityVal:
-			# 			highestIntensityVal = i[4]
-			# 			highestIntensity = idx
+				i = points[idx]
+				if i[3] < lowestIntensityVal:
+					lowestIntensityVal = i[3]
+					lowestIntensity = idx
+				if i[4] > highestRangeVal:
+					highestRangeVal = i[4]
+					highestRange = idx
 
-			# 	if lowestIntensity == -1 or highestRange == -1:
-			# 		break
+			if lowestIntensity == -1 or highestRange == -1:
+				return
 
-			# 	points.append()
-
-			# 	del points[highestRange]
-			# 	del labels[highestRange]
-
-			idx = 0
-			while len(points) < maxNumPoints:
-				points.append(points[idx])
-				labels.append(labels[idx])
-				idx += 1
-
-			print(len(points), len(labels), "l")
-			pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
-
-		if len(points) == maxNumPoints:
-			# pointnetQueue.put((np.array(points[:maxNumPoints]), np.array(labels[:maxNumPoints])))
-			print(len(points), len(labels), "e")
-			pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
-
-		if len(points) > maxNumPoints:
-
-			while len(points) > maxNumPoints:
-				lowestIntensity = -1
-				lowestIntensityVal = 999
-				highestRange = -1
-				highestRangeVal = -1
-
-				for idx in range(len(points)):
-
-					if labels[idx] > 0:
-						continue
-
-					i = points[idx]
-					if i[3] < lowestIntensityVal:
-						lowestIntensityVal = i[3]
-						lowestIntensity = idx
-					if i[4] > highestRangeVal:
-						highestRangeVal = i[4]
-						highestRange = idx
-
-				if lowestIntensity == -1 or highestRange == -1:
-					return
-
-				del points[highestRange]
-				del labels[highestRange]
-
-			print(len(points), len(labels), "b")
-			pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
+			del points[highestRange]
+			del labels[highestRange]
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:])))
 
 class PointnetThread(threading.Thread):
 	def __init__(self, queue, publisher, nPoints):
@@ -216,8 +206,7 @@ class PointnetThread(threading.Thread):
 		self.labelBuffer = []
 		self.frameNumber = 0
 		self.trainEveryNFrames = 3
-		self.epochsPerMessage = 1
-		self.messageDB = []
+		self.epochsPerMessage = 10
 
 		self.batchSize = 20
 		self.threshold = 0.3
@@ -299,47 +288,35 @@ class PointnetThread(threading.Thread):
 	def run(self):
 		while True:
 
-			originalMsg = None
-			while True:
-				msg = None
-				try:
-					msg = self.queue.get(block=False)
-				except:
-					break
-
+			msg = ""
+			while self.queue.qsize() > 1:
+				msg = self.queue.get(block=False)
 				if msg == "quit":
 					print("Closing net")
 					return
-
 				self.pointBuffer.append(msg[0])
 				self.labelBuffer.append(msg[1])
 
-				if len(self.pointBuffer) > self.batchSize:
-					del self.pointBuffer[0]
-					del self.labelBuffer[0]
+			msg = self.queue.get(block=True)
 
-				originalMsg = msg
+			if msg == "quit":
+				print("Closing net")
+				return
 
-			if len(self.pointBuffer) < self.batchSize or originalMsg == None:
-				continue
-
-			self.messageDB.append(originalMsg)
-			if len(self.messageDB) < self.batchSize:
-				continue
-
-			print("Training")
+			self.pointBuffer.append(msg[0])
+			self.labelBuffer.append(msg[1])
 
 			#train
 			preds = []
-			self.frameNumber += 1
 			if self.frameNumber % self.trainEveryNFrames == 0:
-				preds = self.train()
+				_ = self.train()
+			self.frameNumber += 1
 
 			#infer
 			preds = self.inferTemp()
 
 			#publish
-			self.publish(preds, originalMsg)
+			self.publish(preds, msg)
 
 	def probMax(self, x):
 	        if x == 1:
@@ -352,35 +329,41 @@ class PointnetThread(threading.Thread):
 		batch = []
 		labels = []
 
-		print(range(self.batchSize))
+		# for _ in range(self.batchSize):
+
+		# 	idx = random.randint(0, self.probMax(len(self.messageDB)) - 1)
+		# 	numerator = 0
+
+		# 	for i in xrange(0, len(self.messageDB)):
+		# 		numerator += i
+		# 		if idx <= numerator:
+		# 			batch.append(self.messageDB[i][0])
+		# 			labels.append(self.messageDB[i][1])
+		# 			break
+
 		for _ in range(self.batchSize):
 
-			idx = random.randint(0, self.probMax(len(self.messageDB)) - 1)
-			numerator = 0
+			idx = random.randint(0, len(self.pointBuffer) - 1)
+			batch.append(self.pointBuffer[idx])
+			labels.append(self.labelBuffer[idx])
 
-			for i in xrange(0, len(self.messageDB)):
-				numerator += i
-				if idx <= numerator:
-					print("appending")
-					batch.append(self.messageDB[i][0])
-					labels.append(self.messageDB[i][1])
-					break
-			print("y")
-
+		print(len(batch))
+		print(len(labels))
 		return batch, labels
 
 	def train(self):
 
 		for epoch in range(self.epochsPerMessage):
 
-			batch, labels = self.getBatches()
+			data, labels = self.getBatches()
 
-			current_data = np.array(batch)
+			current_data = np.array(data)
 			current_label = np.array(labels)
 
 			file_size = current_data.shape[0]
 			num_batches = file_size
 
+			print("Training round ")
 			#print(current_label)
 
 			feed_dict = {self.ops['pointclouds_pl']: current_data[0:self.batchSize, :, :],
@@ -390,12 +373,10 @@ class PointnetThread(threading.Thread):
 			summary, step, _, loss_val, pred_val = self.sess.run([self.ops['merged'], self.ops['step'], self.ops['train_op'], self.ops['loss'], self.ops['pred']],
 				feed_dict=feed_dict)
 
-
-			#print("lr: " + str(self.learning_rate[0]))
-			#print(self.learning_rate)
-			#print(loss_val)
 			self.file.write(str(loss_val) + "\n")
 			self.file.flush()
+
+			print("Training round finished")
 
 			return pred_val
 
@@ -403,7 +384,7 @@ class PointnetThread(threading.Thread):
 
 		pointBuf = []
 		labelBuf = []
-		for i in range(len(self.pointBuffer)):
+		for i in range(self.batchSize):
 			pointBuf.append(self.pointBuffer[-1])
 			labelBuf.append(self.labelBuffer[-1])
 
@@ -527,7 +508,6 @@ class PointnetThread(threading.Thread):
 				msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
 
 			self.publisher.publish(msg)
-
 
 def closePointnet():
 	global pointnetQueue
