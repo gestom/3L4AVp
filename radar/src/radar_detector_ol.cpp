@@ -147,7 +147,8 @@ Object3dDetector::Object3dDetector() {
 	  // svm_model_ = svm_load_model("pedestrian.model");
 	  // if(svm_save_model("pedestrian.modela", svm_model_) == 0) std::cout << "A model has been generated here: ~/.ros/pedestrian.model" << std::endl;
 	  // train_round_ = 1;
-	  loadFromFile();
+    std::cout << "adsasd sadasdasd" <<std::endl;
+    // loadFromFile();
   }
   svm_parameter_.degree = 3; // default 3
   svm_parameter_.gamma = 0.02; // default 1.0/(float)FEATURE_SIZE
