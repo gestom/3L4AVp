@@ -69,7 +69,6 @@ class PeopleTracker
 			   ros::Publisher& pub);
   std::vector<double> cartesianToPolar(geometry_msgs::Point point);
   void detectorCallback(const geometry_msgs::PoseArray::ConstPtr &pta, string detector);
-  void detectorDeepCallback(const geometry_msgs::PoseArray::ConstPtr &pta, string detector);
   void connectCallback(ros::NodeHandle &n);
   void parseParams(ros::NodeHandle);
   
@@ -225,7 +224,6 @@ class PeopleTracker
   ros::Publisher pub_people;
   ros::Publisher pub_trajectory;
   ros::Publisher pub_trajectory_acc;
-  ros::Publisher pub_deep_trajectory_acc;
   ros::Publisher pub_marker;
   tf::TransformListener* listener;
   std::string target_frame;
