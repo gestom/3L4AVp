@@ -60,11 +60,11 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   deepX=msg->deep[0].pose.position.x;
   deepY=msg->deep[0].pose.position.y;
   deepC =msg->deep[0].covariance[0];
-  cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
-  cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
-  cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
-  cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<<endl;
-	if (radX == lastRadX && radY == lastRadY) numRad++; else numRad = 0; 
+  //cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
+  //cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
+  //cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
+  //cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<<endl;
+  if (radX == lastRadX && radY == lastRadY) numRad++; else numRad = 0; 
   if (lasX == lastLasX && lasY == lastLasY) numLas++; else numLas = 0;
   if (deepX== lastDeepX && deepY == lastDeepY) numDeep++; else numDeep = 0;
   lastRadX = radX;
@@ -84,7 +84,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 		kfY = (radY*wr+lasY*wl)/(wr+wl);
     pos1.position.x=kfX;
     pos1.position.y=kfY;
-    ps1.poses.push_back(pos1);
+    ps1.poses.push_back(msg->gt[0].pose);
     final_poses_kamlan_svm_.publish(ps1);
 
 		kfdX = (deepX*wd+lasX*wl)/(wd+wl);
@@ -161,7 +161,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 			switchingDeepOutliers++; 
 		}
 
-		printf("Las/Rad/KF/SF %f %f %f %f %i\n",dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),numLas);
+		printf("Las/Rad/Deep/KF/SF %f %f %f %f %f %i\n",dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(deepX,deepY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),numLas);
 
 	
 }
