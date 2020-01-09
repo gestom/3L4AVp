@@ -49,8 +49,8 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   ps3.header=msg->header;
   ps4.header=msg->header;
   
-  camX  =msg->gt[0].pose.position.z;
-  camY  =msg->gt[0].pose.position.x;
+  camX  =msg->gt[0].pose.position.x;
+  camY  =msg->gt[0].pose.position.y;
   radX =msg->rad[0].pose.position.x;
   radY =msg->rad[0].pose.position.y;
   radC  =msg->rad[0].covariance[0];
