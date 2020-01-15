@@ -218,7 +218,7 @@ class PointnetThread(threading.Thread):
 		self.epochsPerMessage = 15
 
 		self.batchSize = 20
-		self.threshold = 0.3
+		self.threshold = 0.32
 		self.numPoints = nPoints
 		self.nClasses = 2
 

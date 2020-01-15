@@ -7,15 +7,17 @@ data = data.split("\n")
 data = filter(None, data)
 #Las/Rad/Deep/KF/SF 1.319630 0.366953 0.366953 -nan 0.366953 1
 
-bufs = [[],[],[],[],[]]
-slidingWindowLen = 20
+bufs = [[],[],[],[],[], [], []]
+slidingWindowLen = 50
 vals = []
 for lineidx in range(len(data)):
+	if lineidx % 1000 == 0:
+		print(str(lineidx) + " lines in")
 	line = data[lineidx]
 
 	if "nan" in line:
 		print("Warning, NAN")
-		continue
+	#	continue
 
 	line = line.split(" ")
 
