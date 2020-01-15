@@ -74,6 +74,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
     pos.position.y=y;
     pos.position.z=z;
     ps.header=depth_msg->header;
+    //ps.header.frame_id="map";
     ps.poses.push_back(pos);
     camera_ground_truth_publihser_.publish(ps);
 	}

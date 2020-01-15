@@ -226,7 +226,7 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
   ps.header= msg->header;
   try{
   transformStamp =
-    tfBuffer.lookupTransform("laser", "map", ros::Time(0), ros::Duration(1.0) );
+    tfBuffer.lookupTransform(msg->header.frame_id, "map", ros::Time(0), ros::Duration(1.0) );
   }
     catch (tf2::TransformException &ex) {
       ROS_WARN("%s",ex.what());
@@ -251,7 +251,7 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
 		realX=((1/leg[0][3])*leg[0][0] + (1/ccovR[0])*rad[0][0])/((1/leg[0][3])+(1/ccovR[0]));
 		realY=((1/leg[0][3])*leg[0][1] + (1/ccovR[0])*rad[0][1])/((1/leg[0][3])+(1/ccovR[0]));
 
-		//cout<< "Cam/Rad/Leg/Deep " << cam[0][0] << " " << cam[0][1] << " " << rad[0][0] << " " << rad[0][1] << " " << ccovR[0] << " " <<  leg[0][0] << " " << leg[0][1] << " " << leg[0][3] <<  " " << deep[0][0] << " " << deep[0][1] << " " << ccovD[0] << endl;
+		cout<< "Cam/Rad/Leg/Deep " << cam[0][0] << " " << cam[0][1] << " " << rad[0][0] << " " << rad[0][1] << " " << ccovR[0] << " " <<  leg[0][0] << " " << leg[0][1] << " " << ccovL[0] <<  " " << deep[0][0] << " " << deep[0][1] << " " << ccovD[0] << endl;
 
 		float distRC=0;
 		float distCL=0;
@@ -279,10 +279,10 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
     //cout<<"CAM"<<endl;
     message.gt=constructPoseWCovariance(cam,ccovC);
     evaluator_mux_publisher_.publish(message);
-    cout << "gt   "<<message.gt.size()<<endl;
-    cout << "rad   "<<message.rad.size()<<endl;
-    cout << "leg   "<<message.leg.size()<<endl;
-    cout << "deep   "<<message.deep.size()<<endl;
+    //cout << "gt   "<<message.gt.size()<<endl;
+    //cout << "rad   "<<message.rad.size()<<endl;
+    //cout << "leg   "<<message.leg.size()<<endl;
+    //cout << "deep   "<<message.deep.size()<<endl;
 
     
 }
