@@ -99,6 +99,8 @@ def callback(msg):
 			msg.pose.position.y = meanY
 			msg.pose.position.z = 0
 
+			msg.pose.orientation.w = 1
+
 			visPublisher.publish(msg)
 
 		msg = PoseArray()
@@ -114,6 +116,8 @@ def callback(msg):
 			pose.position.x = i[0]
 			pose.position.y = i[1]
 			pose.position.z = 0
+
+			pose.orientation.w = 1
 
 			msg.poses.append(pose)
 
