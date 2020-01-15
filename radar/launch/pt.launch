@@ -26,7 +26,9 @@
     <param name="people" value="/people_tracker/svm1/people" />
     <param name="marker" value="/people_tracker/svm1/marker_array" />
     <param name="trajectory" value="/people_tracker/svm1/trajectory" />
+    <param name="trajectory_acc" value="/people_tracker/svm1/trajectory_acc" />
   </node>
+  
     <group unless="$(arg single)">
       <rosparam command="load" file="$(find bayes_people_tracker)/cnn2.yaml"/>
       <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker_cnn2" respawn="true">

@@ -18,7 +18,7 @@ ros::Publisher publisher_svm2;
 //resends topic as one detection
 void resend_cnn_1( const geometry_msgs::PoseArray::ConstPtr& msg)
 {
-  if (sizeof(msg->poses)!=0) {
+  if (1) {
     geometry_msgs::PoseArray nene;
     geometry_msgs::Pose ps;
     ps= msg->poses[0];
@@ -30,7 +30,7 @@ void resend_cnn_1( const geometry_msgs::PoseArray::ConstPtr& msg)
 
 void resend_svm_1( const geometry_msgs::PoseArray::ConstPtr& msg)
 {
-  if (sizeof(msg->poses)!=0){
+  if (1){
     geometry_msgs::PoseArray nene;
     geometry_msgs::Pose ps;
     ps= msg->poses[0];
@@ -100,8 +100,8 @@ int main(int argc, char** argv)
   if (single=="true")
     {
       std::cout << "running solo spliter" <<std::endl;
-      sub_1 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(cnnTopic, 1, resend_cnn_1);
-      sub_2 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(svmTopic, 1, resend_svm_1);
+      sub_1 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(cnnTopic, 10, resend_cnn_1);
+      sub_2 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(svmTopic, 10, resend_svm_1);
      }else{
       std::cout << "runing duo spliter" <<std::endl;
       publisher_cnn2 =  private_node_handle_.advertise<geometry_msgs::PoseArray>("/pt/cnn2", 1, true);

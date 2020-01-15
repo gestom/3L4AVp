@@ -35,7 +35,7 @@
   <!-- node pkg="camera_pcl" type="camera_pcl" name="camera_pcl" output="log"/ -->
 
   <node pkg="evaluation_ros" type="sensor_fusion" name="sensor_fusion" output="log"/>
-  <node pkg="person_splitter" type="ppl_spliter" name="ppl_spliter" >
+  <node pkg="person_splitter" type="ppl_spliter" name="ppl_spliter" respawn="true" >
     <param name="solo" type= "string" value="$(arg single)"/>
   </node>
 
