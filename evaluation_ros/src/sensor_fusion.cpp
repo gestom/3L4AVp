@@ -161,7 +161,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 			switchingDeepOutliers++; 
 		}
 
-		printf("Las/Rad/Deep/KF/SF %f %f %f %f %f %i\n",dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(deepX,deepY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),numLas);
+		printf("Las/Rad/Deep/KF/SF/KFD/SFD %f %f %f %f %f %f %f %i\n",dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(deepX,deepY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),dist(kfdX,kfdY,camX,camY),dist(sfdX,sfdY,camX,camY),numLas);
 
 	
 }
