@@ -369,7 +369,7 @@ int main(int argc, char **argv)
   cam.push_back(ps);
   deep.push_back(ps);
   rad.push_back(ps);
-  float a = 0;
+  float a = 0.1;
   ccovR.push_back(a);
   ccovD.push_back(a);
   ccovL.push_back(a);
