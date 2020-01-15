@@ -18,15 +18,15 @@ for lineidx in range(len(data)):
 
 	line = line.split(" ")
 
-	for i in range(1,6):
+	for i in range(1,8):
 		bufs[i-1].append(line[i])
 
 	if len(bufs[0]) > slidingWindowLen:
-		for i in range(0,5):
+		for i in range(0,7):
 			del bufs[i][0]
 
 	avgs = []
-	for i in range(0, 5):
+	for i in range(0, 7):
 		total = 0
 		n = 0
 		for j in bufs[i]:
