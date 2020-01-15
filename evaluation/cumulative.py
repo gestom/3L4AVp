@@ -14,6 +14,7 @@ for lineidx in range(len(data)):
 	line = data[lineidx]
 
 	if "nan" in line:
+		print("Warning, NAN")
 		continue
 
 	line = line.split(" ")
