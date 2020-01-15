@@ -242,7 +242,7 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
        
         vector<float> vec(3,0);
         vec[0]=ps.pose.position.x;
-        vec[1]=ps.pose.position.y;
+        vec[1]=-ps.pose.position.y;
         vec[2]=ps.pose.position.z;
         cam.push_back(vec);
         ccovC.push_back(0);

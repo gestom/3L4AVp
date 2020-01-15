@@ -195,7 +195,7 @@ int main(int argc,char* argv[])
 			lasC.push_back(lc);
 			deepTX.push_back(dx);
 			deepTY.push_back(dy);
-			deepC.push_bck(dc);
+			deepC.push_back(dc);
 
 		}
 

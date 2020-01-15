@@ -29,12 +29,12 @@ from sensor_msgs.msg import PointCloud2
 tfListener = None
 legDetectorBuffers = []
 legDetectorFrame = None
-maxTimeSinceLaser = rospy.Duration(0, 250000000) #secs, nanosecs
-maxDistanceToObj = 0.5
+maxTimeSinceLaser = rospy.Duration(0, 300000000) #secs, nanosecs
+maxDistanceToObj = 0.6
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
-maxNumPoints = 50
-pointsAllowedToDuplicate = 5
+maxNumPoints = 30
+pointsAllowedToDuplicate = 8
 biasX, biasY = 0.0, 0.0
 biasCount = 0
 
@@ -218,7 +218,7 @@ class PointnetThread(threading.Thread):
 		self.epochsPerMessage = 15
 
 		self.batchSize = 20
-		self.threshold = 0.2
+		self.threshold = 0.4
 		self.numPoints = nPoints
 		self.nClasses = 2
 
@@ -520,7 +520,9 @@ class PointnetThread(threading.Thread):
 
 			msg.points = []
 			for j in classPoints[i]:
-				msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
+				#msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
+				#msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+				msg.points.append(Point(x = j[0] - biasX, y = j[1] - biasY, z = j[2]))
 
 			self.publisher.publish(msg)
 

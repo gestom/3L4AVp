@@ -1,0 +1,8 @@
+*.log
+*.tmp
+*.o
+*.png
+*.txt
+sensor_fusion
+*.a
+*.pdf

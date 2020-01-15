@@ -12,13 +12,15 @@ import pn_provider as provider
 import pn_tf_util as tf_util
 from pn_model import *
 
+dump = []
+
 if tf.__version__[0] != "1":
 	print("Please use tensorflow v.1")
 	sys.exit(0)
 
-ratio = 6
+ratio = 5
 
-BATCH_SIZE = 32
+BATCH_SIZE = 2
 MAX_EPOCH = 20
 BASE_LEARNING_RATE = 0.001
 GPU_INDEX = 0
@@ -249,6 +251,11 @@ def train_one_epoch(sess, ops, train_writer):
     except:
         pass
 
+    a = (loss_sum / float(num_batches))
+    b = (total_correct / float(total_seen))
+    c = 0
+
+    dump.append((a, b, c))
         
 def eval_one_epoch(sess, ops, test_writer):
     """ ops: dict mapping from string to tf ops """
@@ -292,8 +299,16 @@ def eval_one_epoch(sess, ops, test_writer):
         log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
     except:
         pass 
+    # a = loss_sum / float(total_seen/NUM_POINT)
+    # b = total_correct / float(total_seen)
+    # c = np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))
 
+    # dump.append((a, b, c))
 
 if __name__ == "__main__":
     train()
     LOG_FOUT.close()
+
+    import pickle
+    with open("log.txt", "w") as f:
+        pickle.dump(dump, f)
