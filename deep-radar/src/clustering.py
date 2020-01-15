@@ -97,7 +97,7 @@ def callback(msg):
 
 			msg.pose.position.x = meanX
 			msg.pose.position.y = meanY
-			msg.pose.position.z = 0
+			msg.pose.position.z = 0.1
 
 			msg.pose.orientation.w = 1
 
@@ -115,7 +115,7 @@ def callback(msg):
 			pose = Pose()
 			pose.position.x = i[0]
 			pose.position.y = i[1]
-			pose.position.z = 0
+			pose.position.z = 0.1
 
 			pose.orientation.w = 1
 
