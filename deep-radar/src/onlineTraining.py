@@ -7,11 +7,13 @@ import h5py
 import sys
 import socket
 import Queue
+import copy
 import threading
 
 import numpy as np
 import tf as rostf
 import tensorflow as tf
+from numpy.random import seed
 
 import pn_provider as provider
 import pn_tf_util as tf_util
@@ -26,17 +28,20 @@ from people_msgs.msg import PositionMeasurementArray
 from geometry_msgs.msg import Point
 from sensor_msgs.msg import PointCloud2
 
+tf.random.set_random_seed(seed=1)
+
 tfListener = None
 legDetectorBuffers = []
 legDetectorFrame = None
 maxTimeSinceLaser = rospy.Duration(0, 250000000) #secs, nanosecs
-maxDistanceToObj = 0.5
+maxDistanceToObj = 0.6
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
 maxNumPoints = 40
-pointsAllowedToDuplicate = 8
+pointsAllowedToDuplicate = 3
 biasX, biasY = 0.0, 0.0
-biasCount = 0
+biasBufferX, biasBufferY = [], []
+biasCount = 25
 
 def legDetectorCallback(msg):
 	global legDetectorBuffers, legDetectorFrame
@@ -49,7 +54,7 @@ def legDetectorCallback(msg):
 	legDetectorBuffers[msg.id] = msg
 
 def radarCallback(msg):
-	global legDetectorBuffers, legDetectorFrame, tfListener, pointnetQueue, maxNumPoints, biasX, biasY, biasCount
+	global legDetectorBuffers, legDetectorFrame, tfListener, pointnetQueue, maxNumPoints, biasX, biasY, biasCount, biasBufferY, biasBufferX
 	
 	trainable = True
 
@@ -150,9 +155,22 @@ def radarCallback(msg):
 	if nInCluster != 0:
 		totalDiffX = totalDiffX / nInCluster
 		totalDiffY = totalDiffY / nInCluster
-		biasX = ((biasX * biasCount) + (totalDiffX)) / (biasCount + 1)
-		biasY = ((biasY * biasCount) + (totalDiffY)) / (biasCount + 1)
-		biasCount += 1
+		biasBufferX.append(totalDiffX)
+		biasBufferY.append(totalDiffY)
+
+		if len(biasBufferX) > biasCount:
+			del biasBufferX[0]
+		if len(biasBufferY) > biasCount:
+			del biasBufferY[0]
+
+		total = 0
+		for i in biasBufferX:
+			total += i
+		biasX = total / len(biasBufferX)
+		total = 0
+		for i in biasBufferY:
+			total += i
+		biasY = total / len(biasBufferY)
 
 	if len(points) < maxNumPoints - pointsAllowedToDuplicate:
 		trainable = False
@@ -215,15 +233,18 @@ class PointnetThread(threading.Thread):
 		self.labelBuffer = []
 		self.frameNumber = 0
 		self.trainEveryNFrames = 3
-		self.epochsPerMessage = 15
+		self.epochsPerMessage = 10
 
 		self.batchSize = 20
-		self.threshold = 0.32
+		self.threshold = 0.13
 		self.numPoints = nPoints
 		self.nClasses = 2
+		self.augmentationFrames = 2
+		self.augmentationDist = 0.2
+		self.augmentationNoise = 0.03
 
 		self.baseLearningRate = 0.0005
-		self.decayStep = 300000.0
+		self.decayStep = 3000.0
 		self.decayRate = 0.05
 
 		self.config = tf.ConfigProto()
@@ -294,6 +315,33 @@ class PointnetThread(threading.Thread):
 					'merged': self.merged,
 					'step': self.batch}
 
+	def augment(self, msg):
+
+		for i in range(self.augmentationFrames):
+
+			distX = random.random() * self.augmentationDist
+			distY = random.random() * self.augmentationDist
+
+			newMsgA = copy.deepcopy(msg[0])
+			newMsgB = copy.deepcopy(msg[1])
+
+			for i in range(len(newMsgA)):
+				if newMsgB[i] != 0:
+					newMsgA[i][0] += distX + (random.random() * self.augmentationNoise)
+					newMsgA[i][1] += distY + (random.random() * self.augmentationNoise)
+					newMsgA[i][2] += (random.random() * self.augmentationNoise)
+					newMsgA[i][4] += (random.random() * self.augmentationNoise)
+
+			self.pointBuffer.append(newMsgA)
+			self.labelBuffer.append(newMsgB)
+
+		self.pointBuffer.append(msg[0])
+		self.labelBuffer.append(msg[1])
+
+		while len(self.pointBuffer) > 250:
+			del self.pointBuffer[0]
+			del self.labelBuffer[0]
+
 	def run(self):
 		while True:
 
@@ -304,8 +352,7 @@ class PointnetThread(threading.Thread):
 					print("Closing net")
 					return
 				if msg[2] == True:
-					self.pointBuffer.append(msg[0])
-					self.labelBuffer.append(msg[1])
+					self.augment(msg)
 
 			msg = self.queue.get(block=True)
 
@@ -314,8 +361,7 @@ class PointnetThread(threading.Thread):
 				return
 
 			if msg[2] == True:
-				self.pointBuffer.append(msg[0])
-				self.labelBuffer.append(msg[1])
+				self.augment(msg)
 
 				#train
 				preds = []
@@ -520,8 +566,8 @@ class PointnetThread(threading.Thread):
 
 			msg.points = []
 			for j in classPoints[i]:
-				#msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
-				#msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+				# msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
+				# msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
 				msg.points.append(Point(x = j[0] - biasX, y = j[1] - biasY, z = j[2]))
 
 			self.publisher.publish(msg)
