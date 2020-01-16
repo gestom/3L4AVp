@@ -17,8 +17,8 @@ ros::Publisher publisher_svm2;
 
 //resends topic as one detection
 void resend_cnn_1( const geometry_msgs::PoseArray::ConstPtr& msg)
-{
-  if (1) {
+{  
+  if (msg->poses.size()>0) {
     geometry_msgs::PoseArray nene;
     geometry_msgs::Pose ps;
     ps= msg->poses[0];
@@ -30,14 +30,13 @@ void resend_cnn_1( const geometry_msgs::PoseArray::ConstPtr& msg)
 
 void resend_svm_1( const geometry_msgs::PoseArray::ConstPtr& msg)
 {
-  if (1){
+  if (sizeof(msg->poses)>0){
     geometry_msgs::PoseArray nene;
     geometry_msgs::Pose ps;
     ps= msg->poses[0];
     nene.poses.push_back(ps);
     nene.header = msg->header;
     publisher_svm1.publish(nene);
-  
   }
 }
 

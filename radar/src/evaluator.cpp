@@ -225,8 +225,7 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
   geometry_msgs::PoseStamped ps;
   ps.header= msg->header;
   try{
-  transformStamp =
-    tfBuffer.lookupTransform(msg->header.frame_id, "map", ros::Time(0), ros::Duration(1.0) );
+    //transformStamp =tfBuffer.lookupTransform(msg->header.frame_id, "map", ros::Time(0), ros::Duration(1) );
   }
     catch (tf2::TransformException &ex) {
       ROS_WARN("%s",ex.what());
@@ -238,11 +237,11 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
     for(unsigned int i = 0;i<msg->poses.size();i++)
      {
        ps.pose=msg->poses[i];
-       tf2::doTransform(ps, ps, transformStamp);
+       //tf2::doTransform(ps, ps, transformStamp);
        
         vector<float> vec(3,0);
         vec[0]=ps.pose.position.x;
-        vec[1]=-ps.pose.position.y;
+        vec[1]=ps.pose.position.y;
         vec[2]=ps.pose.position.z;
         cam.push_back(vec);
         ccovC.push_back(0);
@@ -376,11 +375,11 @@ int main(int argc, char **argv)
   image_transport::ImageTransport it_(nh_);
 	depth_pub_  = it_.advertise("/person/depth/image_rect_raw", 1);
 	info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/person/depth/camera_info",1);
-	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",1,radarPoseCallback);
-	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm1/trajectory_acc",1,varianceCallback);
-	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",1,varianceDeepCallback);
+	radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",3,radarPoseCallback);
+	variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm1/trajectory_acc",3,varianceCallback);
+	variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",3,varianceDeepCallback);
 	leg_pose_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements",1,legPoseCallback); 
-	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",1, deepPoseCallback);
+	deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",3, deepPoseCallback);
   gt_subscriber_ = nh_.subscribe<geometry_msgs::PoseArray>("/person/ground_truth",1,groundTruthCallback);
   evaluator_mux_publisher_ = nh_.advertise<radar::radar_fusion>("/evaulator_mux",1);
 

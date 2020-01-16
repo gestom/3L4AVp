@@ -51,8 +51,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 			if((cv_ptr->image.at<float>(j,i) > 700) &&  (cv_ptr->image.at<float>(j,i) < 3100)){
 
 				x +=  cv_ptr->image.at<float>(j,i)*0.00082;
-				y +=  (cv_ptr->image.at<float>(j,i)*0.00082) * ((i - 312.463) * (1.06/0.82/628.008));
-				z +=  (cv_ptr->image.at<float>(j,i)*0.00082) * ((j - 242.325) * (1.06/0.82/628.008));
+				y +=  (cv_ptr->image.at<float>(j,i)*0.001) * ((i - 312.463) * (1/628.008));
+				z +=  (cv_ptr->image.at<float>(j,i)*0.001) * ((j - 242.325) * (1/628.008));
 				numPoints++;
 			} else{
 				cv_ptr->image.at<float>(j,i) = 0;
@@ -63,7 +63,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 	if ( !isinf(x) && !isinf(y) && !isinf(z) )
 	{
 		z = z/numPoints;  
-		y = y/numPoints;  
+		y = -y/numPoints;  
 		x = x/numPoints; 
 
     std_msgs::Header header;
