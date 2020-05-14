@@ -1,0 +1,9 @@
+<launch>
+  <node pkg="dopler_correction" type="dopler_correction" name="dopler_correction" respawn="true">
+    <param name="odom_in" type="string" value="/husky_velocity_conoller/odom"/>
+    <param name="radar_in" type="string" value="/radar/RScan"/>
+    <param name="radar_out" value="/radar_fixed" />
+
+  </node>
+
+</launch>
