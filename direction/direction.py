@@ -17,7 +17,7 @@ bearings = []
 mags = []
 
 with open("bearing.txt", "w") as f:
-    f.write("bearing magnitude")
+    f.write("bearing magnitude\n")
     for line in data:
         line = line.split(" ")
         try:
@@ -50,19 +50,33 @@ print("bearings written to bearings.txt")
 #plt.hist(bearings, bins=bins)
 #plt.show()
 
-#with taking into account:
-binSize = 4
-binBoundaries = list(range(0, 360, binSize))
-binEnds = list(range(binSize, 360 + binSize, binSize))
+#with taking into account magnitude:
+binSize = 4 #degrees
+binBoundaries = list(range(0, 360, binSize)) #array of start of bins
+binEnds = list(range(binSize, 360 + binSize, binSize)) #array of end of bins
 bins = []
+binsN = []
 for i in binBoundaries:
-    bins.append(0)
+    bins.append(0.0)
+    binsN.append(0)
 
 for bearing in bearings:
     for j in range(0, len(binBoundaries)):
-        if bearing > binBoundaries[j] and bearing < binEnds[j]:
+        if bearing >= binBoundaries[j] and bearing < binEnds[j]:
             bins[j] += mag
+            binsN[j] += 1
 
+#print(binsN)
+#print(bins)
+
+#divide total magnitude in each bin by the number of items in the bin
+for i in range(len(bins)):
+    bins[i] = bins[i] / binsN[i]
+
+#print(binsN)
+#print(bins)
+
+#use middle of bin as the reference point on the graph
 binMids = []
 current = binSize / 2
 for i in range(0, len(binBoundaries)):

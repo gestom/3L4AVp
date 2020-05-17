@@ -38,7 +38,7 @@ def interp(t):
     tbz = interpolate.splrep(ts, bz)
     nbz = interpolate.splev(t, tbz)
 
-    return (nax, nay, naz, nbx, nby, nbz)
+    return [nax, nay, naz, nbx, nby, nbz]
 
 pub = rospy.Publisher('/person/ground_truth', PoseArray, queue_size=10)
 rospy.init_node("ground_truth")
@@ -51,6 +51,15 @@ while not rospy.is_shutdown():
         r.sleep()
     vals = interp(float(str(rospy.Time.now())))
 
+    vals[2] = vals[2] * 0.00082
+    vals[5] = vals[5] * 0.00082
+
+    vals[0] = vals[2] * ((vals[0] - 312.674) * (1/627.56347))
+    vals[3] = vals[5] * ((vals[3] - 312.674) * (1/627.56347))
+
+    vals[1] = vals[2] * ((vals[1] - 241.3366) * (1/627.56347))
+    vals[4] = vals[5] * ((vals[4] - 241.3366) * (1/627.56347))
+
     msg = PoseArray()
     msg.header.frame_id = "camera_depth_optical_frame"
     msg.header.stamp = rospy.Time.now()
@@ -58,16 +67,16 @@ while not rospy.is_shutdown():
     msg.poses = []
 
     p = Pose()
-    p.position.x = vals[0]
-    p.position.y = vals[1]
-    p.position.z = vals[2]
+    p.position.x = vals[2]
+    p.position.y = -vals[0]
+    p.position.z = vals[1]
     p.orientation.w = 1
     msg.poses.append(p)
 
     p = Pose()
-    p.position.x = vals[3]
-    p.position.y = vals[4]
-    p.position.z = vals[5]
+    p.position.x = vals[5]
+    p.position.y = -vals[3]
+    p.position.z = vals[4]
     p.orientation.w = 1
     msg.poses.append(p)
 

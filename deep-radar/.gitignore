@@ -5,3 +5,6 @@ src/rosbags/
 src/models/
 src/datasets/
 src/losslog*
+*.log
+*.pdf
+*.txt
