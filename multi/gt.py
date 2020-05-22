@@ -45,11 +45,13 @@ rospy.init_node("ground_truth")
 r = rospy.Rate(30)
 
 while not rospy.is_shutdown():
-    print(str(rospy.Time.now()))
+    #print(str(rospy.Time.now()))
     if str(rospy.Time.now()) == "0":
         print("sl")
         r.sleep()
     vals = interp(float(str(rospy.Time.now())))
+    print("Start")
+    print(vals)
 
     vals[2] = vals[2] * 0.00082
     vals[5] = vals[5] * 0.00082
@@ -59,6 +61,8 @@ while not rospy.is_shutdown():
 
     vals[1] = vals[2] * ((vals[1] - 241.3366) * (1/627.56347))
     vals[4] = vals[5] * ((vals[4] - 241.3366) * (1/627.56347))
+
+    print(vals)
 
     msg = PoseArray()
     msg.header.frame_id = "camera_depth_optical_frame"

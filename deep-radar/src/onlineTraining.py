@@ -34,11 +34,11 @@ tfListener = None
 legDetectorBuffers = []
 legDetectorFrame = None
 maxTimeSinceLaser = rospy.Duration(0, 250000000) #secs, nanosecs
-maxDistanceToObj = 0.6
+maxDistanceToObj = 0.5
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
 maxNumPoints = 40
-pointsAllowedToDuplicate = 3
+pointsAllowedToDuplicate = 6
 biasX, biasY = 0.0, 0.0
 biasBufferX, biasBufferY = [], []
 biasCount = 25
@@ -568,7 +568,7 @@ class PointnetThread(threading.Thread):
 			for j in classPoints[i]:
 				# msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
 				# msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
-				msg.points.append(Point(x = j[0] - biasX, y = j[1] - biasY, z = j[2]))
+				msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
 
 			self.publisher.publish(msg)
 

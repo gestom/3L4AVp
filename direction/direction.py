@@ -19,6 +19,10 @@ mags = []
 with open("bearing.txt", "w") as f:
     f.write("bearing magnitude\n")
     for line in data:
+
+        if "Las/Rad" not in line:
+            continue
+
         line = line.split(" ")
         try:
             x1 = float(line[-4])
@@ -71,7 +75,8 @@ for bearing in bearings:
 
 #divide total magnitude in each bin by the number of items in the bin
 for i in range(len(bins)):
-    bins[i] = bins[i] / binsN[i]
+    if binsN[i] > 0:
+        bins[i] = bins[i] / binsN[i]
 
 #print(binsN)
 #print(bins)

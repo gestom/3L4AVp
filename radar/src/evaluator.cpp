@@ -250,7 +250,7 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
 		realX=((1/leg[0][3])*leg[0][0] + (1/ccovR[0])*rad[0][0])/((1/leg[0][3])+(1/ccovR[0]));
 		realY=((1/leg[0][3])*leg[0][1] + (1/ccovR[0])*rad[0][1])/((1/leg[0][3])+(1/ccovR[0]));
 
-		cout<< "Cam/Rad/Leg/Deep " << cam[0][0] << " " << cam[0][1] << " " << rad[0][0] << " " << rad[0][1] << " " << ccovR[0] << " " <<  leg[0][0] << " " << leg[0][1] << " " << ccovL[0] <<  " " << deep[0][0] << " " << deep[0][1] << " " << ccovD[0] << endl;
+		cout<< "TS/Cam/Rad/Leg/Deep" << " " << ros::Time::now() << " " << cam[0][0] << " " << cam[0][1] << " " << rad[0][0] << " " << rad[0][1] << " " << ccovR[0] << " " <<  leg[0][0] << " " << leg[0][1] << " " << ccovL[0] <<  " " << deep[0][0] << " " << deep[0][1] << " " << ccovD[0] << endl;
 
 		float distRC=0;
 		float distCL=0;

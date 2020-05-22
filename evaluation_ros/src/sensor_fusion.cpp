@@ -15,7 +15,7 @@ ros::Publisher final_poses_kamlan_cnn_,final_poses_switching_svm_,final_poses_ka
 
 int laserOutliers,laserMeasurements,radarOutliers,radarMeasurements,kalmanOutliers,switchingOutliers,deepOutliers,deepMeasurements,kalmanDeepOutliers,switchingDeepOutliers;
 
-double camX,camY,radX,radY,radC,lasX,lasY,lasC,radTX,radTY,lasTX,lasTY,deepX,deepY,deepTX,deepTY,deepC;
+double camX,camY,camZ, radX,radY,radC,lasX,lasY,lasC,radTX,radTY,lasTX,lasTY,deepX,deepY,deepTX,deepTY,deepC;
 double wr,wl,kfX,kfY,radD,lasD,kfD,sfD,sfX,sfY,deepD,wd,kfdX,kfdY,kfdD,sfdX,sfdY,sfdD;
 
 float lastRadX,lastRadY,lastLasX,lastLasY,lastDeepX,lastDeepY;
@@ -49,21 +49,34 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   ps3.header=msg->header;
   ps4.header=msg->header;
   
-  camX  =msg->gt[0].pose.position.x;
-  camY  =msg->gt[0].pose.position.y;
-  radX =msg->rad[0].pose.position.x;
-  radY =msg->rad[0].pose.position.y;
-  radC  =msg->rad[0].covariance[0];
-  lasX =msg->leg[0].pose.position.x;
-  lasY =msg->leg[0].pose.position.y;
-  lasC  =msg->leg[0].covariance[0];
-  deepX=msg->deep[0].pose.position.x;
-  deepY=msg->deep[0].pose.position.y;
-  deepC =msg->deep[0].covariance[0];
+  int person = 0;
+
+  //experiment 1
+  camX  =msg->gt[person].pose.position.z;
+  camY  =msg->gt[person].pose.position.x;
+  camZ  =msg->gt[person].pose.position.y;
+
+  //experiment 2 - moving
+  camX  =msg->gt[person].pose.position.x;
+  camY  =msg->gt[person].pose.position.y;
+  camZ  =msg->gt[person].pose.position.z;
+
+  radX =msg->rad[person].pose.position.x;
+  radY =msg->rad[person].pose.position.y;
+  radC  =msg->rad[person].covariance[0];
+  lasX =msg->leg[person].pose.position.x;
+  lasY =msg->leg[person].pose.position.y;
+  lasC  =msg->leg[person].covariance[0];
+  deepX=msg->deep[person].pose.position.x;
+  deepY=msg->deep[person].pose.position.y;
+  deepC =msg->deep[person].covariance[0];
   //cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
-  //cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
-  //cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
-  //cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<<endl;
+  cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
+  cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
+  //cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<< camZ << endl;
+  cout << "gt: " << camX << " " << camY << " " << camZ << endl;
+
+
   if (radX == lastRadX && radY == lastRadY) numRad++; else numRad = 0; 
   if (lasX == lastLasX && lasY == lastLasY) numLas++; else numLas = 0;
   if (deepX== lastDeepX && deepY == lastDeepY) numDeep++; else numDeep = 0;
