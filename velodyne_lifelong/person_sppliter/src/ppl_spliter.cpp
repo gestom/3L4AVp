@@ -30,7 +30,7 @@ void resend_cnn_1( const geometry_msgs::PoseArray::ConstPtr& msg)
 
 void resend_svm_1( const geometry_msgs::PoseArray::ConstPtr& msg)
 {
-  if (sizeof(msg->poses)>0){
+  if (msg->poses.size()>0){
     geometry_msgs::PoseArray nene;
     geometry_msgs::Pose ps;
     ps= msg->poses[0];
@@ -43,32 +43,44 @@ void resend_svm_1( const geometry_msgs::PoseArray::ConstPtr& msg)
 //resends detections on as much as 2 different topic
 void resend_cnn_2( const geometry_msgs::PoseArray::ConstPtr& msg)
 {
-  for(int i = 0; i<sizeof(msg->poses);i++){
+  for(int i = 0; i<msg->poses.size();i++){
     geometry_msgs::PoseArray nene;
     geometry_msgs::Pose ps;
     ps= msg->poses[i];
     nene.poses.push_back(ps);
     nene.header = msg->header;
-    if (msg->poses[i].position.y>0){
+
+    if(i == 0)
+        publisher_cnn1.publish(nene);
+    else if(i == 1)
+        publisher_cnn2.publish(nene);
+
+    /*if (msg->poses[i].position.y>0){
       publisher_cnn1.publish(nene);
     }else{
       publisher_cnn2.publish(nene);
-    }
+    }*/
   }
 }
 void resend_svm_2( const geometry_msgs::PoseArray::ConstPtr& msg)
 {
-  for(int i = 0; i<sizeof(msg->poses);i++){
+  for(int i = 0; i<msg->poses.size();i++){
     geometry_msgs::PoseArray nene;
     geometry_msgs::Pose ps;
     ps= msg->poses[i];
     nene.poses.push_back(ps);
     nene.header = msg->header;
-    if (msg->poses[i].position.y>0){
+
+    if(i == 0)
+        publisher_svm1.publish(nene);
+    else if(i == 1)
+        publisher_svm2.publish(nene);
+
+    /*if (msg->poses[i].position.y>0){
       publisher_svm1.publish(nene);
     }else{
       publisher_svm2.publish(nene);
-    }
+    }*/
   }
 }
 
@@ -96,7 +108,7 @@ int main(int argc, char** argv)
   publisher_svm1 =  private_node_handle_.advertise<geometry_msgs::PoseArray>("/pt/svm1", 1, true);
   ros::Subscriber sub_1;
   ros::Subscriber sub_2;
-  if (single=="true")
+  if (single=="true" && 1==2)
     {
       std::cout << "running solo spliter" <<std::endl;
       sub_1 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(cnnTopic, 10, resend_cnn_1);
