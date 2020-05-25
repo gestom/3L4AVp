@@ -31,6 +31,15 @@
   <node pkg="radar" type="ground_truth" name="ground_truth"/>
   <node pkg="radar" type="radar_align" name="radar_align"/>
 
+  <node pkg="radar" type="dopler_correction" name="dopler_correction" respawn="true">
+    <param name="odom_in" type="string" value="/husky_velocity_controller/odom"/>
+    <param name="radar_in" type="string" value="/radar/RScan"/>
+    <param name="radar_out" value="/radar_fixed" />
+  </node>
+
+
+
+
   <node pkg="radar" type="legFilter" name="legFilter"/>
   <!-- node pkg="camera_pcl" type="camera_pcl" name="camera_pcl" output="log"/ -->
 
