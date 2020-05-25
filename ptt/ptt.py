@@ -49,8 +49,6 @@ def callback(msg):
                 closestIdx = pose
                 closestTarget = target
 
-    print(closestDist, closestIdx, closestTarget)
-
     out.poses[closestTarget].position.x = msg.poses[closestIdx].position.x
     out.poses[closestTarget].position.y = msg.poses[closestIdx].position.y
     lastPoses[closestTarget][0] = msg.poses[closestIdx].position.x
@@ -58,19 +56,15 @@ def callback(msg):
 
     if len(msg.poses) == 1:
        publisher.publish(out) 
+       print(out.poses)
        return
 
-    print("before")
-    print(out.poses)
-
     NclosestIdx = -1
-    NclosestDist = 9999
+    NclosestDist = 99999
     NclosestTarget = -1
 
     for pose in range(len(msg.poses)):
-        print(pose, closestIdx)
         if pose == closestIdx:
-            print("contd")
             continue
         for target in range(len(lastPoses)):
             if target == closestTarget:
@@ -78,18 +72,16 @@ def callback(msg):
             dx = msg.poses[pose].position.x - lastPoses[target][0]
             dy = msg.poses[pose].position.y - lastPoses[target][1]
             dist = (dx*dx+dy*dy)**0.5
-            if dist <= NclosestDist:
+            if dist < NclosestDist:
                 NclosestDist = dist
                 NclosestIdx = pose
                 NclosestTarget = target
 
-    print(closestDist, closestIdx, closestTarget)
     out.poses[NclosestTarget].position.x = msg.poses[NclosestIdx].position.x
     out.poses[NclosestTarget].position.y = msg.poses[NclosestIdx].position.y
     lastPoses[NclosestTarget][0] = msg.poses[NclosestIdx].position.x
     lastPoses[NclosestTarget][1] = msg.poses[NclosestIdx].position.y
 
-    print("after")
     print(out.poses)
 
     publisher.publish(out)
