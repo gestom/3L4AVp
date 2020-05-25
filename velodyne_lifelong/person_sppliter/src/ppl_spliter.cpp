@@ -108,7 +108,7 @@ int main(int argc, char** argv)
   publisher_svm1 =  private_node_handle_.advertise<geometry_msgs::PoseArray>("/pt/svm1", 1, true);
   ros::Subscriber sub_1;
   ros::Subscriber sub_2;
-  if (single=="true" && 1==2)
+  if (single=="true")
     {
       std::cout << "running solo spliter" <<std::endl;
       sub_1 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(cnnTopic, 10, resend_cnn_1);
