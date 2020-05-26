@@ -89,8 +89,10 @@ def callback(msg):
 def listener():
     global publisher
     rospy.init_node('ptt')
-    rospy.Subscriber("/deep_radar/out/clustering", PoseArray, callback)
-    publisher = rospy.Publisher('/ptt', PoseArray, queue_size=1)
+    sub_name = rospy.get_param("~in","/deep_radar/out/clustering")
+    pub_name = rospy.get_param("~out","/ptt")
+    rospy.Subscriber(sub_name, PoseArray, callback)
+    publisher = rospy.Publisher(pub_name, PoseArray, queue_size=1)
     rospy.spin()
 
 if __name__ == '__main__':

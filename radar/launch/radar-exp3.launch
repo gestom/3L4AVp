@@ -1,5 +1,5 @@
 <launch>
-  <arg name="single" default="true" />
+  <arg name="single" default="false" />
 
   <!-- action and reconfigure clients to control the system
        <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="Reconfigurator"/>
@@ -37,7 +37,11 @@
   <node pkg="evaluation_ros" type="sensor_fusion" name="sensor_fusion" output="log"/>
   <node pkg="person_splitter" type="ppl_spliter" name="ppl_spliter" respawn="true">
     <param name="solo" type= "string" value="$(arg single)"/>
+    <param name="svmTopic" type= "string" value="/ptt/svm"/>
+    <param name="cnnTopic" type= "string" value="/ptt/cnn"/>
   </node>
+   <include file="$(find radar)/launch/miltiple.launch"> 
+   </include>
 
   <include file="$(find radar)/launch/pt.launch"> 
     <arg name="single" default="$(arg single)" />

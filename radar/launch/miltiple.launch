@@ -1,0 +1,14 @@
+<launch>
+
+
+    <node name="ptt1" pkg="radar" type="ptt.py" output="screen" respawn="true">
+          <param name="in" type="string" value="/deep_radar/out/clustering"/>
+          <param name="out" type="string" value="/ptt/cnn"/>
+    </node>
+    <node name="ptt2" pkg="radar" type="ptt.py" output="screen" respawn="true">
+        <param name="in" type="string" value="/radar_detector_ol/poses"/>
+        <param name="out" type="string" value="/ptt/svm"/>
+    </node>
+
+ 
+</launch>
