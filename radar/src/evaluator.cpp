@@ -386,7 +386,6 @@ int main(int argc, char **argv)
 
     if(single  == "true")
     {
-      std::cout<< "szlkj;" << std::endl;
 	    radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",3,radarPoseCallback);
         deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",3, deepPoseCallback);
     }

@@ -22,14 +22,14 @@
     <param name="round_negatives" type="int" value="10"/>
   </node>
   
-      <node pkg="radar" type="evaluator" name="evaluator" output="screen" respawn="true">
+      <node pkg="radar" type="evaluator" name="evaluator" output="log" respawn="true">
       <remap from="/detector" to="/radar_detector_ol/markers"/>
       <remap from="/ground" to="/person"/>
       <param name="solo" type= "string" value="$(arg single)"/>
       </node>
 
   <node pkg="radar" type="radarology" name="radarology"/>
- <node pkg="radar" type="ground_truth" name="ground_truth"/>
+  <!--<node pkg="radar" type="ground_truth" name="ground_truth"/> -->
   <node pkg="radar" type="radar_align" name="radar_align"/>
 
   <node pkg="radar" type="legFilter" name="legFilter"/>
