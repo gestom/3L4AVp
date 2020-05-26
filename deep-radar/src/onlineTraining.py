@@ -583,7 +583,7 @@ if __name__ == '__main__':
 
 	tfListener = rostf.TransformListener()
 
-	rospy.Subscriber("/radar/RScan", PointCloud2, radarCallback)
+	rospy.Subscriber("/radar/RScan/aligned", PointCloud2, radarCallback)
         #negating movement from doppler:
 	#rospy.Subscriber("/radar_fixed", PointCloud2, radarCallback)
 	rospy.Subscriber("/visualization_marker", msgTemplate.Marker, legDetectorCallback)

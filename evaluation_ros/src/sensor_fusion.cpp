@@ -49,7 +49,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   ps3.header=msg->header;
   ps4.header=msg->header;
   
-  int person = 0;
+  int person = 1;
 
   //experiment 1
   camX  =msg->gt[person].pose.position.z;
@@ -61,6 +61,11 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   camY  =msg->gt[person].pose.position.y;
   camZ  =msg->gt[person].pose.position.z;
 
+  //experiment 3 - multi
+  camX  =msg->gt[person].pose.position.x;
+  camY  =msg->gt[person].pose.position.z;
+  camZ  =msg->gt[person].pose.position.y;
+
   radX =msg->rad[person].pose.position.x;
   radY =msg->rad[person].pose.position.y;
   radC  =msg->rad[person].covariance[0];
@@ -70,10 +75,10 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   deepX=msg->deep[person].pose.position.x;
   deepY=msg->deep[person].pose.position.y;
   deepC =msg->deep[person].covariance[0];
-  //cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
+  cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
   cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
   cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
-  //cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<< camZ << endl;
+  cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<< " " <<  camZ << endl;
   cout << "gt: " << camX << " " << camY << " " << camZ << endl;
 
 
@@ -174,7 +179,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 			switchingDeepOutliers++; 
 		}
 
-		printf("TS/Las/Rad/Deep/KF/SF/KFD/SFD/numLas/DistCam/DistLas/DistRad/DistDeep/DistKF/DistSF/DistKFD/DistSFD/gtx/gty/radx/rady %f %f %f %f %f %f %f %f %i %f %f %f %f %f %f %f %f %f %f %f %f\n",ros::Time::now().toSec(), dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(deepX,deepY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),dist(kfdX,kfdY,camX,camY),dist(sfdX,sfdY,camX,camY),numLas, dist(0, 0, camX, camY), dist(0, 0, lasX, lasY), dist(0, 0, radX, radY), dist(0, 0, deepX, deepY), dist(0, 0, kfX, kfY), dist(0, 0, sfX, sfY), dist(0, 0, kfdX, kfdY), dist(0, 0, sfdX, sfdY), camX, camY, radX, radY);
+		printf("TS/Las/Rad/Deep/KF/SF/KFD/SFD/numLas/DistCam/DistLas/DistRad/DistDeep/DistKF/DistSF/DistKFD/DistSFD/gtx/gty/gtz/radx/rady %f %f %f %f %f %f %f %f %i %f %f %f %f %f %f %f %f %f %f %f %f %f\n",ros::Time::now().toSec(), dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(deepX,deepY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),dist(kfdX,kfdY,camX,camY),dist(sfdX,sfdY,camX,camY),numLas, dist(0, 0, camX, camY), dist(0, 0, lasX, lasY), dist(0, 0, radX, radY), dist(0, 0, deepX, deepY), dist(0, 0, kfX, kfY), dist(0, 0, sfX, sfY), dist(0, 0, kfdX, kfdY), dist(0, 0, sfdX, sfdY), camX, camY, camZ, radX, radY);
 
 	
 }
