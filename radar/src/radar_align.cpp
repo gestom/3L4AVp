@@ -28,6 +28,9 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& msg){
   catch(tf::LookupException){
     std::cerr << "Transform lookup failed" << std::endl;
   }
+  catch(tf2::ConnectivityException){
+    std::cerr << "Something broke. Did you jump back in time?" << std::endl;
+  }
   pcl_ros::transformPointCloud("map", pc, t_pc, tf_listener);
   radar_pub_.publish(t_pc);
 }
