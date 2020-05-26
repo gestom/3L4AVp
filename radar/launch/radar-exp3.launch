@@ -1,5 +1,5 @@
 <launch>
-  <arg name="single" default="false" />
+  <arg name="single" default="true" />
 
   <!-- action and reconfigure clients to control the system
        <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="Reconfigurator"/>
@@ -22,13 +22,14 @@
     <param name="round_negatives" type="int" value="10"/>
   </node>
   
-      <node pkg="radar" type="evaluator" name="evaluator" output="log" respawn="true">
+      <node pkg="radar" type="evaluator" name="evaluator" output="screen" respawn="true">
       <remap from="/detector" to="/radar_detector_ol/markers"/>
       <remap from="/ground" to="/person"/>
+      <param name="solo" type= "string" value="$(arg single)"/>
       </node>
 
   <node pkg="radar" type="radarology" name="radarology"/>
-  <!--<node pkg="radar" type="ground_truth" name="ground_truth"/>-->
+ <node pkg="radar" type="ground_truth" name="ground_truth"/>
   <node pkg="radar" type="radar_align" name="radar_align"/>
 
   <node pkg="radar" type="legFilter" name="legFilter"/>

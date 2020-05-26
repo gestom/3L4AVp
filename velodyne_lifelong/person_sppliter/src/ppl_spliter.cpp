@@ -108,19 +108,11 @@ int main(int argc, char** argv)
   publisher_svm1 =  private_node_handle_.advertise<geometry_msgs::PoseArray>("/pt/svm1", 1, true);
   ros::Subscriber sub_1;
   ros::Subscriber sub_2;
-  if (single=="true")
-    {
-      std::cout << "running solo spliter" <<std::endl;
-      sub_1 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(cnnTopic, 10, resend_cnn_1);
-      sub_2 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(svmTopic, 10, resend_svm_1);
-     }else{
       std::cout << "runing duo spliter" <<std::endl;
       publisher_cnn2 =  private_node_handle_.advertise<geometry_msgs::PoseArray>("/pt/cnn2", 1, true);
       publisher_svm2 =  private_node_handle_.advertise<geometry_msgs::PoseArray>("/pt/svm2", 1, true);
       sub_1 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(cnnTopic, 1, resend_cnn_2);
-      sub_2 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(svmTopic, 1, resend_svm_2);
-  }
-  
+      sub_2 =  private_node_handle_.subscribe<geometry_msgs::PoseArray>(svmTopic, 1, resend_svm_2); 
   ros::spin();
 
   return 0;

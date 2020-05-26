@@ -360,7 +360,11 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "evaluator");
 	ros::NodeHandle nh_;
-	groundTruthSub = nh_.subscribe<visualization_msgs::MarkerArray>("/ground", 1, groundTruthCb);
+	ros::NodeHandle nh ("~");
+  std::string single;
+  nh.param<std::string>("solo", single, "true");
+
+  groundTruthSub = nh_.subscribe<visualization_msgs::MarkerArray>("/ground", 1, groundTruthCb);
 	detectorSub = nh_.subscribe<visualization_msgs::MarkerArray>("/detector", 1, detectorCb);
 
   std::vector<float> ps(1,0);
@@ -374,21 +378,22 @@ int main(int argc, char **argv)
   ccovL.push_back(a);
   image_transport::ImageTransport it_(nh_);
 
-    int person = 0;
+  
 
-    if(person == 0)
+  variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm1/trajectory_acc",3,varianceCallback);
+  variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",3,varianceDeepCallback);
+
+
+    if(single  == "true")
     {
+      std::cout<< "szlkj;" << std::endl;
 	    radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",3,radarPoseCallback);
-        variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm1/trajectory_acc",3,varianceCallback);
         deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",3, deepPoseCallback);
-	    variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",3,varianceDeepCallback);
     }
-    else if(person == 1)
+    else if(single == "false")
     {
         radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm2",3,radarPoseCallback);
-        variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm2/trajectory_acc",3,varianceCallback);
         deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn2",3, deepPoseCallback);
-	    variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn2/trajectory_acc",3,varianceDeepCallback);
     }
 
 	depth_pub_  = it_.advertise("/person/depth/image_rect_raw", 1);

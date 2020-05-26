@@ -2,6 +2,7 @@
     <arg name="single"  default ="true"/>
 <!-- zou will need to add more config files if you want to expand!!!!-->
 
+  <group if="$(arg single)">
   <rosparam command="load" file="$(find bayes_people_tracker)/cnn1.yaml"/>
   <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker_cnn1" respawn="true">
     <param name="base_link" type="string" value="velodyne"/>
@@ -28,32 +29,34 @@
     <param name="trajectory" value="/people_tracker/svm1/trajectory" />
     <param name="trajectory_acc" value="/people_tracker/svm1/trajectory_acc" />
   </node>
+    </group>
   
     <group unless="$(arg single)">
       <rosparam command="load" file="$(find bayes_people_tracker)/cnn2.yaml"/>
-      <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker_cnn2" respawn="true">
-        <param name="base_link" type="string" value="velodyne"/>
-        <param name="target_frame" type="string" value="map"/>
-        <param name="positions" value="/people_tracker/cnn2/positions" />
-        <param name="pose" value="/people_tracker/cnn2/pose" />
-        <param name="pose_array" value="/people_tracker/cnn2/pose_array" />
-        <param name="people" value="/people_tracker/cnn2/people" />
-        <param name="marker" value="/people_tracker/cnn2/marker_array" />
-        <param name="trajectory" value="/people_tracker/cnn2/trajectory" />
-        <param name="trajectory_acc" value="/people_tracker/cnn2/trajectory_acc" />
+  <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker_cnn1" respawn="true">
+    <param name="base_link" type="string" value="velodyne"/>
+    <param name="target_frame" type="string" value="map"/>
+    <param name="positions" value="/people_tracker/cnn1/positions" />
+    <param name="pose" value="/people_tracker/cnn1/pose" />
+    <param name="pose_array" value="/people_tracker/cnn1/pose_array" />
+    <param name="people" value="/people_tracker/cnn1/people" />
+    <param name="marker" value="/people_tracker/cnn1/marker_array" />
+    <param name="trajectory" value="/people_tracker/cnn1/trajectory" />
+    <param name="trajectory_acc" value="/people_tracker/cnn1/trajectory_acc" />
 
       </node>
 
-      <rosparam command="load" file="$(find bayes_people_tracker)/svm2.yaml"/>
-      <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker_svm2" respawn="true">
-        <param name="base_link" type="string" value="velodyne"/>
-        <param name="target_frame" type="string" value="map"/>
-        <param name="positions" value="/people_tracker/svm2/positions" />
-        <param name="pose" value="/people_tracker/svm2/pose" />
-        <param name="pose_array" value="/people_tracker/svm2/pose_array" />
-        <param name="people" value="/people_tracker/svm2/people" />
-        <param name="marker" value="/people_tracker/svm2/marker_array" />
-        <param name="trajectory" value="/people_tracker/svm2/trajectory" />
-      </node>
+  <rosparam command="load" file="$(find bayes_people_tracker)/svm2.yaml"/>
+  <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker_svm1" respawn="true">
+    <param name="base_link" type="string" value="velodyne"/>
+    <param name="target_frame" type="string" value="map"/>
+    <param name="positions" value="/people_tracker/svm1/positions" />
+    <param name="pose" value="/people_tracker/svm1/pose" />
+    <param name="pose_array" value="/people_tracker/svm1/pose_array" />
+    <param name="people" value="/people_tracker/svm1/people" />
+    <param name="marker" value="/people_tracker/svm1/marker_array" />
+    <param name="trajectory" value="/people_tracker/svm1/trajectory" />
+    <param name="trajectory_acc" value="/people_tracker/svm1/trajectory_acc" />
+  </node>
   </group>
 </launch>
