@@ -20,7 +20,7 @@ double wr,wl,kfX,kfY,radD,lasD,kfD,sfD,sfX,sfY,deepD,wd,kfdX,kfdY,kfdD,sfdX,sfdY
 
 float lastRadX,lastRadY,lastLasX,lastLasY,lastDeepX,lastDeepY;
 
-int numRad,numLas,numDeep;	
+float  numRad,numLas,numDeep;	
 
 vector<float> camRadDist,camDeepDist,camLasDist,camKfRDist,camSfRDist,camKfDeDist,camSfDeDist;	
 
@@ -88,9 +88,9 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   lastDeepY = deepY;
 
   	//gradually inflate covariance in case information is obsolete
-		wr = 1/(radC*(pow(2,numRad)));
-		wl = 1/(lasC*(pow(2,numLas)));
-		wd = 1/(deepC*(pow(2,numDeep)));
+		wr = 1/(radC*(pow(2.0,numRad)));
+		wl = 1/(lasC*(pow(2.0,numLas)));
+		wd = 1/(deepC*(pow(2.0,numDeep)));
 
 		//kalman filter
 		kfX = (radX*wr+lasX*wl)/(wr+wl);
