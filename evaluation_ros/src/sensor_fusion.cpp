@@ -49,7 +49,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   ps3.header=msg->header;
   ps4.header=msg->header;
   
-  int person = 1;
+  int person = 0;
 
   //experiment 1
   camX  =msg->gt[person].pose.position.z;
@@ -75,10 +75,10 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   deepX=msg->deep[person].pose.position.x;
   deepY=msg->deep[person].pose.position.y;
   deepC =msg->deep[person].covariance[0];
-  cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
-  cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
-  cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
-  cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<< " " <<  camZ << endl;
+  cout << "rad   "<< msg->rad[person].pose.position.x <<"   "<< msg->rad[person].pose.position.y<<endl;
+  cout << "leg   "<< msg->leg[person].pose.position.x <<"   "<< msg->leg[person].pose.position.y<<endl;
+  cout << "deep   "<< msg->deep[person].pose.position.x <<"   "<< msg->deep[person].pose.position.y<<endl;
+  cout << "gt   "<< msg->gt[person].pose.position.x <<"   "<< msg->gt[person].pose.position.y<< " " <<  camZ << endl;
   cout << "gt: " << camX << " " << camY << " " << camZ << endl;
 
 
