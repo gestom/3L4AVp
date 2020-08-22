@@ -75,12 +75,13 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
   deepX=msg->deep[person].pose.position.x;
   deepY=msg->deep[person].pose.position.y;
   deepC =msg->deep[person].covariance[0];
+  /*
   cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
   cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
   cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
   cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<< " " <<  camZ << endl;
   cout << "gt: " << camX << " " << camY << " " << camZ << endl;
-
+  */
 
   if (radX == lastRadX && radY == lastRadY) numRad++; else numRad = 0; 
   if (lasX == lastLasX && lasY == lastLasY) numLas++; else numLas = 0;
