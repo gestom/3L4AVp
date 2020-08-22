@@ -20,7 +20,7 @@ double wr,wl,kfX,kfY,radD,lasD,kfD,sfD,sfX,sfY,deepD,wd,kfdX,kfdY,kfdD,sfdX,sfdY
 
 float lastRadX,lastRadY,lastLasX,lastLasY,lastDeepX,lastDeepY;
 
-float  numRad,numLas,numDeep;	
+int  numRad,numLas,numDeep;	
 
 vector<float> camRadDist,camDeepDist,camLasDist,camKfRDist,camSfRDist,camKfDeDist,camSfDeDist;	
 int exp_type_;
@@ -43,7 +43,6 @@ float dist(float x,float y, float rx,float ry)
 
 void inputCallback(const radar::radar_fusionConstPtr& msg)
 {
-
 	std_msgs::Header header;
 	geometry_msgs:: PoseArray ps1;
 	geometry_msgs:: Pose pos1;
@@ -57,7 +56,6 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 	ps2.header=msg->header;
 	ps3.header=msg->header;
 	ps4.header=msg->header;
-
 
 
 	switch(exp_type_){
@@ -101,7 +99,6 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 	//cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
 	//cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<< " " <<  camZ << endl;
 	//cout << "gt: " << camX << " " << camY << " " << camZ << endl;
-
 
 	if (radX == lastRadX && radY == lastRadY) numRad++; else numRad = 0; 
 	if (lasX == lastLasX && lasY == lastLasY) numLas++; else numLas = 0;
@@ -202,11 +199,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 
 
 
-	printf("TS/Las/Rad/Deep/KF/SF/KFD/SFD/numLas/DistCam/DistLas/DistRad/DistDeep/DistKF/DistSF/DistKFD/DistSFD/gtx/gty/gtz/radx/rady %f %f %f %f %f %f %f %f %i %f %f %f %f %f %f %f %f %f %f %f %f %f\n",ros::Time::now().toSec(), ld/sample_size,rd/sample_size,dd/sample_size,krd/sample_size,srd/sample_size,kdd/sample_size,sdd/sample_size, numLas, dist(0, 0, camX, camY), dist(0, 0, lasX, lasY), dist(0, 0, radX, radY), dist(0, 0, deepX, deepY), dist(0, 0, kfX, kfY), dist(0, 0, sfX, sfY), dist(0, 0, kfdX, kfdY), dist(0, 0, sfdX, sfdY), camX, camY, camZ, radX, radY);
-
-
-
-
+	printf("TS/Las/Rad/Deep/KF/SF/KFD/SFD/numLas/DistCam/DistLas/DistRad/DistDeep/DistKF/DistSF/DistKFD/DistSFD/gtx/gty/gtz/radx/rady %f %f %f %f %f %f %f %f %i %f %f %f %f %f %f %f %f %f %f %f %f %f\n",ros::Time::now().toSec(), dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(deepX,deepY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),dist(kfdX,kfdY,camX,camY),dist(sfdX,sfdY,camX,camY),numLas, dist(0, 0, camX, camY), dist(0, 0, lasX, lasY), dist(0, 0, radX, radY), dist(0, 0, deepX, deepY), dist(0, 0, kfX, kfY), dist(0, 0, sfX, sfY), dist(0, 0, kfdX, kfdY), dist(0, 0, sfdX, sfdY), camX, camY, camZ, radX, radY);
 }
 
 
@@ -221,18 +214,18 @@ int main(int argc,char* argv[])
 	nh_.getParam("/sensor_fusion/person",person_);
 
 
-  ros::Subscriber variance_deep_sub_ = nh_.subscribe<radar::radar_fusion>("/evaulator_mux",20, inputCallback);
-  final_poses_kamlan_cnn_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/cnn/wighted_filter/pose",1);
-  final_poses_switching_svm_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/svm/switching_filter/pose",1);
-  final_poses_kamlan_svm_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/svm/wighted_filter/pose",1);
-  final_poses_switching_cnn_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/cnn/switching_filter/pose",1);
+	ros::Subscriber variance_deep_sub_ = nh_.subscribe<radar::radar_fusion>("/evaluator_mux",20, inputCallback);
+	final_poses_kamlan_cnn_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/cnn/wighted_filter/pose",1);
+	final_poses_switching_svm_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/svm/switching_filter/pose",1);
+	final_poses_kamlan_svm_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/svm/wighted_filter/pose",1);
+	final_poses_switching_cnn_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/cnn/switching_filter/pose",1);
 
 	/*read input*/
-  radD=lasD=sfD=kfD=deepD=kfdD=sfdD=0;
-  lastLasX=lastLasY=lastRadX=lastRadY = lastDeepX =lastDeepY = 10000;
-  numRad=numLas=numDeep=0;
+	radD=lasD=sfD=kfD=deepD=kfdD=sfdD=0;
+	lastLasX=lastLasY=lastRadX=lastRadY = lastDeepX =lastDeepY = 10000;
+	numRad=numLas=numDeep=0;
 	laserOutliers=laserMeasurements=radarOutliers=radarMeasurements=switchingOutliers=kalmanOutliers=deepOutliers=deepMeasurements=kalmanDeepOutliers=switchingDeepOutliers=0;
 
-  ros::spin();
+	ros::spin();
 }
 
