@@ -44,13 +44,19 @@ pub = rospy.Publisher('/person/ground_truth', PoseArray, queue_size=10)
 rospy.init_node("ground_truth")
 r = rospy.Rate(30)
 
+person = 0
+
 while not rospy.is_shutdown():
-    #print(str(rospy.Time.now()))
+    print(str(rospy.Time.now()))
     if str(rospy.Time.now()) == "0":
         print("sl")
         r.sleep()
+
+    if float(str(rospy.Time.now())) > ts[-1]:
+        print("finished")
+        break
+
     vals = interp(float(str(rospy.Time.now())))
-    print("Start")
     print(vals)
 
     vals[2] = vals[2] * 0.00082
@@ -70,19 +76,21 @@ while not rospy.is_shutdown():
 
     msg.poses = []
 
-    p = Pose()
-    p.position.x = vals[2]
-    p.position.y = -vals[0]
-    p.position.z = vals[1]
-    p.orientation.w = 1
-    msg.poses.append(p)
+    if person == 0:
+        p = Pose()
+        p.position.x = vals[2]
+        p.position.y = -vals[0]
+        p.position.z = vals[1]
+        p.orientation.w = 1
+        msg.poses.append(p)
 
-    p = Pose()
-    p.position.x = vals[5]
-    p.position.y = -vals[3]
-    p.position.z = vals[4]
-    p.orientation.w = 1
-    msg.poses.append(p)
+    elif person == 1:
+        p = Pose()
+        p.position.x = vals[5]
+        p.position.y = -vals[3]
+        p.position.z = vals[4]
+        p.orientation.w = 1
+        msg.poses.append(p)
 
     pub.publish(msg)
     

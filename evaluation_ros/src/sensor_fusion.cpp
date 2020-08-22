@@ -34,7 +34,6 @@ float dist(float x,float y, float rx,float ry)
 
 void inputCallback(const radar::radar_fusionConstPtr& msg)
 {
-
 	std_msgs::Header header;
 	geometry_msgs:: PoseArray ps1;
 	geometry_msgs:: Pose pos1;
@@ -49,7 +48,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 	ps3.header=msg->header;
 	ps4.header=msg->header;
 
-	int person = 1;
+	int person = 0;
 
 	//experiment 1
 	camX  =msg->gt[person].pose.position.z;
@@ -76,10 +75,10 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 	deepY=msg->deep[person].pose.position.y;
 	deepC =msg->deep[person].covariance[0];
 	/*
-	   cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
-	   cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
-	   cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
-	   cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<< " " <<  camZ << endl;
+	   cout << "rad   "<< msg->rad[person].pose.position.x <<"   "<< msg->rad[person].pose.position.y<<endl;
+	   cout << "leg   "<< msg->leg[person].pose.position.x <<"   "<< msg->leg[person].pose.position.y<<endl;
+	   cout << "deep   "<< msg->deep[person].pose.position.x <<"   "<< msg->deep[person].pose.position.y<<endl;
+	   cout << "gt   "<< msg->gt[person].pose.position.x <<"   "<< msg->gt[person].pose.position.y<< " " <<  camZ << endl;
 	   cout << "gt: " << camX << " " << camY << " " << camZ << endl;
 	   */
 
@@ -181,8 +180,6 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 	}
 
 	printf("TS/Las/Rad/Deep/KF/SF/KFD/SFD/numLas/DistCam/DistLas/DistRad/DistDeep/DistKF/DistSF/DistKFD/DistSFD/gtx/gty/gtz/radx/rady %f %f %f %f %f %f %f %f %i %f %f %f %f %f %f %f %f %f %f %f %f %f\n",ros::Time::now().toSec(), dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(deepX,deepY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),dist(kfdX,kfdY,camX,camY),dist(sfdX,sfdY,camX,camY),numLas, dist(0, 0, camX, camY), dist(0, 0, lasX, lasY), dist(0, 0, radX, radY), dist(0, 0, deepX, deepY), dist(0, 0, kfX, kfY), dist(0, 0, sfX, sfY), dist(0, 0, kfdX, kfdY), dist(0, 0, sfdX, sfdY), camX, camY, camZ, radX, radY);
-
-
 }
 
 
