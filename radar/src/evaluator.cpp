@@ -218,7 +218,6 @@ std::vector<geometry_msgs::PoseWithCovariance>  constructPoseWCovariance (std::v
 }
 void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
 {
-  printf("gtcallback\n");
 	numOfCycles++; 
   tf2_ros::Buffer tfBuffer;
   tf2_ros::TransformListener tf2_listener(tfBuffer);
@@ -233,7 +232,6 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
       ros::Duration(1.0).sleep();
       return;
   }
-  printf("tfok\n");
     cam.clear();
     std::vector<float> ccovC;
     for(unsigned int i = 0;i<msg->poses.size();i++)
@@ -249,7 +247,6 @@ void groundTruthCallback(const geometry_msgs::PoseArrayConstPtr& msg)
         ccovC.push_back(0);
       }
 
-  printf("calcscoming\n");
 		realX=((1/leg[0][3])*leg[0][0] + (1/ccovR[0])*rad[0][0])/((1/leg[0][3])+(1/ccovR[0]));
 		realY=((1/leg[0][3])*leg[0][1] + (1/ccovR[0])*rad[0][1])/((1/leg[0][3])+(1/ccovR[0]));
 

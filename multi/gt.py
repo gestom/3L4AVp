@@ -62,12 +62,18 @@ while not rospy.is_shutdown():
         print("sl")
         r.sleep()
 
+    if float(str(rospy.Time.now())) < ts[0]:
+        print("not yet started")
+        continue
+
     if float(str(rospy.Time.now())) > ts[-1]:
         print("finished")
         break
 
+
     vals = interp(float(str(rospy.Time.now())))
 
+    print(vals)
     vals[2] = vals[2] * 0.00082
     vals[5] = vals[5] * 0.00082
 
