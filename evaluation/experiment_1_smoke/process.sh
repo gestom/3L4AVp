@@ -3,7 +3,7 @@ tail -n 1281 all.txt >haze.txt
 
 function compute()
 {
-	./sensor_fusion $1.txt a.tmp
+	./offline_sensor_fusion $1.txt a.tmp
 	cat a.tmp |grep SUM >sum.tmp
 	gnuplot $1.gnu >$1.fig
 	fig2dev -Lpdf $1.fig >$1.pdf
@@ -12,6 +12,6 @@ function compute()
 
 make
 compute all
-compute normal  
-compute haze 
-rm *.tmp
+#compute normal  
+#compute haze 
+#rm *.tmp
