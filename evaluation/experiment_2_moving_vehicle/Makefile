@@ -1,4 +1,4 @@
-appname := sensor_fusion 
+appname := moving_error 
 
 CXX := c++
 CXXFLAGS := -std=c++11 -ggdb 

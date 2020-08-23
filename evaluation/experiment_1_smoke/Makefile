@@ -1,4 +1,4 @@
-appname := sensor_fusion 
+appname := offline_sensor_fusion 
 
 CXX := c++
 CXXFLAGS := -std=c++11 -ggdb 

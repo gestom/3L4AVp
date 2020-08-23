@@ -172,17 +172,21 @@ int main(int argc,char* argv[])
 	vector<float> radNX,radNY,lasNX,lasNY,deepNX,deepNY;
 	if(argc<4)
 	{
-		fprintf(stderr,"usage: %s referencePoints.txt outputpoints.txt slidingAverageOutput.txt \n",argv[0]); 
+		fprintf(stderr,"usage: %s referencePoints.txt outputpoints.txt \n",argv[0]); 
 		return 0;
 	}
 
 	ifstream inFile(argv[1]);
 	FILE *outFile = fopen(argv[2],"w");
-	FILE *outAvgFile = fopen(argv[3],"w");
+	
+	//Sliding average output
+	//FILE *outAvgFile = fopen(argv[3],"w");
+
 	float cx,cy,rx,ry,rc,lx,ly,lc,dx,dy,dc;
 	string ret;
+	float t;
 
-	while(inFile >> ret >> cx >> cy >> rx >>ry >> rc >> lx >> ly >> lc >> dx >> dy >> dc)
+	while(inFile >> ret >> t >> cx >> cy >> rx >>ry >> rc >> lx >> ly >> lc >> dx >> dy >> dc)
 	{
 		if (rx*ry !=0){
 			camX.push_back(cx);
@@ -196,7 +200,7 @@ int main(int argc,char* argv[])
 			deepTX.push_back(dx);
 			deepTY.push_back(dy);
 			deepC.push_back(dc);
-
+			
 		}
 
 	}
@@ -316,7 +320,7 @@ int main(int argc,char* argv[])
 		fprintf(outFile,"ERR Las/Rad/KF/SF/Deep/KFD/SFD %f %f %f %f %f %f %f %i\n",dist(lasX[i],lasY[i],camX[i],camY[i]),dist(radX[i],radY[i],camX[i],camY[i]),dist(kfX,kfY,camX[i],camY[i]),dist(sfX,sfY,camX[i],camY[i]),dist(deepX[i],deepY[i],camX[i],camY[i]),dist(kfdX,kfdY,camX[i],camY[i]),dist(sfdX,sfdY,camX[i],camY[i]),numLas);
 		fprintf(outFile,"SUM Las/Rad/KF/SF/Deep %f %f %f %f %f %f %f %i\n",lasD/(i+1),radD/(i+1),kfD/(i+1),sfD/(i+1),deepD/(i+1),kfdD/(i+1),sfdD/(i+1),numLas);
 	}
-
+	/*
 	//Sliding average
 	int sample_size = 4;
 	bool init=true;
@@ -374,8 +378,8 @@ int main(int argc,char* argv[])
 		camSfDeADist.push_back(camSfDeDist[i]);
 
 	}
-
-
+	*/
+	
 	int siz = camX.size();
 	lasD = lasD/siz;
 	deepD = deepD/siz;

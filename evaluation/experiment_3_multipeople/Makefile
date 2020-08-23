@@ -1,4 +1,4 @@
-appname := sensor_fusion 
+appname := multipeople_error 
 
 CXX := c++
 CXXFLAGS := -std=c++11 -ggdb 
