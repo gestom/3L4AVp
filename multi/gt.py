@@ -3,6 +3,7 @@ import time
 from scipy import interpolate
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
+from sensor_msgs.msg import Image
 
 coords = []
 with open("./3d.txt", "r") as f:
@@ -40,14 +41,23 @@ def interp(t):
 
     return [nax, nay, naz, nbx, nby, nbz]
 
+def callback(_):
+    global val, pub
+    if val == None:
+        print("waiting")
+    else:
+        pub.publish(val)
+
 pub = rospy.Publisher('/person/ground_truth', PoseArray, queue_size=10)
 rospy.init_node("ground_truth")
+rospy.Subscriber("/camera/depth/image_rect_raw", Image, callback)
 r = rospy.Rate(30)
 
 person = 0
 
+val = None
+
 while not rospy.is_shutdown():
-    print(str(rospy.Time.now()))
     if str(rospy.Time.now()) == "0":
         print("sl")
         r.sleep()
@@ -57,7 +67,6 @@ while not rospy.is_shutdown():
         break
 
     vals = interp(float(str(rospy.Time.now())))
-    print(vals)
 
     vals[2] = vals[2] * 0.00082
     vals[5] = vals[5] * 0.00082
@@ -67,8 +76,6 @@ while not rospy.is_shutdown():
 
     vals[1] = vals[2] * ((vals[1] - 241.3366) * (1/627.56347))
     vals[4] = vals[5] * ((vals[4] - 241.3366) * (1/627.56347))
-
-    print(vals)
 
     msg = PoseArray()
     msg.header.frame_id = "camera_depth_optical_frame"
@@ -92,6 +99,7 @@ while not rospy.is_shutdown():
         p.orientation.w = 1
         msg.poses.append(p)
 
-    pub.publish(msg)
-    
-    time.sleep(0.05)
+    #pub.publish(msg)
+    val = msg
+
+    time.sleep(0.01)

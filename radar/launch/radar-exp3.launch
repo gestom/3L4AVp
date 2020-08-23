@@ -37,6 +37,7 @@
 
   <node pkg="evaluation_ros" type="sensor_fusion" name="sensor_fusion" output="log">
     <param name="exp_type" type="int" value="3"/>
+    <!--person to track:-->
     <param name="person" type="int" value="0"/>
   </node> 
  
