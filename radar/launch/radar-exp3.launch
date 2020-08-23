@@ -1,10 +1,13 @@
 <launch>
-  <arg name="single" default="true" />
+  <!--This variable controls which person is being tracked:-->
+  <arg name="personToTrack" value="0" />
 
   <!-- action and reconfigure clients to control the system
        <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="Reconfigurator"/>
   -->
 
+  <!--Dont change:-->
+  <arg name="single" default="true" />
   
   <param name="use_sim_time" value="true"/>
   <!-- ROS leg detector -->
@@ -38,7 +41,7 @@
   <node pkg="evaluation_ros" type="sensor_fusion" name="sensor_fusion" output="log">
     <param name="exp_type" type="int" value="3"/>
     <!--person to track:-->
-    <param name="person" type="int" value="0"/>
+    <param name="person" type="int" value="$(arg personToTrack)"/>
   </node> 
  
   <node pkg="person_splitter" type="ppl_spliter" name="ppl_spliter" respawn="true">
