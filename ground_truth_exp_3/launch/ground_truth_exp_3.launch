@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="ground_truth_exp_3" name="ground_truth_exp_3" type="ground_truth_exp_3.py" output="screen">
+    <param name="/person" type="int" value="0"/>
+    <param name="/path" type="string" value="$(find ground_truth_exp_3)/src/3d.txt"/>
+    </node>
+    
+</launch>

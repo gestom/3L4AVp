@@ -57,6 +57,12 @@
    </include>
 
 
+   <node pkg="ground_truth_exp_3" name="ground_truth_exp_3" type="ground_truth_exp_3.py" respawn="true">
+    <param name="/person" type="int" value="$(arg personToTrack)"/>
+    <param name="/path" type="string" value="$(find ground_truth_exp_3)/src/3d.txt"/>
+    </node>
+
+
 
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_velodyne" args="0 0 0 0 0 0 map velodyne 100"/>
  

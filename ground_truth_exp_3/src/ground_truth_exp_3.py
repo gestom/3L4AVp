@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 import time
 from scipy import interpolate
@@ -5,8 +6,26 @@ from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import Image
 
+def callback(_):
+    global val, pub
+    if val == None:
+        print("waiting")
+    else:
+        pub.publish(val)
+
+
+pub = rospy.Publisher('/person/ground_truth', PoseArray, queue_size=10)
+rospy.init_node("ground_truth_exp_3")
+rospy.Subscriber("/camera/depth/image_rect_raw", Image, callback)
+r = rospy.Rate(30)
+
+person_ = rospy.get_param("/ground_truth_exp_3/person")
+path_ = rospy.get_param("/ground_truth_exp_3/path")
+
+print(person_ , path_)
+
 coords = []
-with open("./3d.txt", "r") as f:
+with open(path_, "r") as f:
     coords = f.read()
 coords = coords.split("\n")
 coords = filter(None, coords)
@@ -40,20 +59,6 @@ def interp(t):
     nbz = interpolate.splev(t, tbz)
 
     return [nax, nay, naz, nbx, nby, nbz]
-
-def callback(_):
-    global val, pub
-    if val == None:
-        print("waiting")
-    else:
-        pub.publish(val)
-
-pub = rospy.Publisher('/person/ground_truth', PoseArray, queue_size=10)
-rospy.init_node("ground_truth")
-rospy.Subscriber("/camera/depth/image_rect_raw", Image, callback)
-r = rospy.Rate(30)
-
-person = 0
 
 val = None
 
@@ -89,7 +94,7 @@ while not rospy.is_shutdown():
 
     msg.poses = []
 
-    if person == 0:
+    if person_ == 0:
         p = Pose()
         p.position.x = vals[2]
         p.position.y = -vals[0]
@@ -97,7 +102,7 @@ while not rospy.is_shutdown():
         p.orientation.w = 1
         msg.poses.append(p)
 
-    elif person == 1:
+    elif person_ == 1:
         p = Pose()
         p.position.x = vals[5]
         p.position.y = -vals[3]
