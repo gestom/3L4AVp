@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import rospy
+import sys
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import PoseArray
 
@@ -22,7 +23,7 @@ def callback(msg):
         return
 
     entities = 1
-    if len(msg.poses) == 2:
+    if len(msg.poses) > 1:
         entities = 2
     elif lastPoses[-1][-1] != -9999:
         entities = 2
@@ -36,7 +37,7 @@ def callback(msg):
         out.poses.append(p)
 
     closestIdx = -1
-    closestDist = 99999
+    closestDist = 9999999
     closestTarget = -1
 
     for pose in range(len(msg.poses)):
@@ -60,7 +61,7 @@ def callback(msg):
        return
 
     NclosestIdx = -1
-    NclosestDist = 99999
+    NclosestDist = 9999999
     NclosestTarget = -1
 
     for pose in range(len(msg.poses)):
@@ -81,8 +82,6 @@ def callback(msg):
     out.poses[NclosestTarget].position.y = msg.poses[NclosestIdx].position.y
     lastPoses[NclosestTarget][0] = msg.poses[NclosestIdx].position.x
     lastPoses[NclosestTarget][1] = msg.poses[NclosestIdx].position.y
-
-    print(out.poses)
 
     publisher.publish(out)
 
