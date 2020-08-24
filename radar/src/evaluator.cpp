@@ -384,12 +384,9 @@ int main(int argc, char **argv)
   variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",3,varianceDeepCallback);
 
 
-    if(single  == "true")
-    {
 	    radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",3,radarPoseCallback);
         deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",3, deepPoseCallback);
-    }
-    else if(single == "false")
+    if(single == "false")
     {
         radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm2",3,radarPoseCallback);
         deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn2",3, deepPoseCallback);
