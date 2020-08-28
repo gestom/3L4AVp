@@ -27,7 +27,7 @@ boost::shared_ptr<image_transport::ImageTransport> it_;
 image_transport::Subscriber sub_depth_;
 image_transport::Publisher depth_pub_;
 ros::Publisher info_pub_;
-ros::Subscriber info_sub_,radar_pose_sub_,radar_pose_sub_2_,leg_pose_sub_,variance_sub_,variance_deep_sub_,deep_radar_sub_2_,deep_radar_sub_, gt_subscriber_;
+ros::Subscriber info_sub_,radar_pose_sub_,radar_pose_sub_2_,leg_pose_sub_,variance_sub_,variance_sub_2,variance_deep_sub_,variance_deep_sub_2,deep_radar_sub_2_,deep_radar_sub_, gt_subscriber_;
 
 
 std::vector<std::vector<float> > rad;
@@ -352,20 +352,39 @@ void deepPoseCallback2(const geometry_msgs::PoseArrayConstPtr& msg){
 }
 
 void varianceCallback(const geometry_msgs::PoseArrayConstPtr& msg){
-  ccovR.clear();
+  //ccovR.clear();
   for(unsigned int i = 0;i<msg->poses.size();i++)
     {
-      ccovR.push_back(msg->poses[i].position.x);
+      ccovR.at(0)=msg->poses[i].position.x;
     }
 }
 
-void varianceDeepCallback(const geometry_msgs::PoseArrayConstPtr& msg){
-  ccovD.clear();
+void varianceCallback2(const geometry_msgs::PoseArrayConstPtr& msg){
+  //ccovR.clear();
   for(unsigned int i = 0;i<msg->poses.size();i++)
     {
-      ccovD.push_back(msg->poses[i].position.x);
+      ccovR.at(1)=msg->poses[i].position.x;
     }
 }
+
+
+void varianceDeepCallback(const geometry_msgs::PoseArrayConstPtr& msg){
+  //ccovD.clear();
+  for(unsigned int i = 0;i<msg->poses.size();i++)
+    {
+      ccovD.at(0)=msg->poses[i].position.x;
+    }
+}
+
+void varianceDeepCallback2(const geometry_msgs::PoseArrayConstPtr& msg){
+  //ccovD.clear();
+  for(unsigned int i = 0;i<msg->poses.size();i++)
+    {
+      ccovD.at(1)=msg->poses[i].position.x;
+    }
+}
+
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "evaluator");
@@ -388,12 +407,18 @@ int main(int argc, char **argv)
   ccovR.push_back(a);
   ccovD.push_back(a);
   ccovL.push_back(a);
+  ccovR.push_back(a);
+  ccovD.push_back(a);
+  ccovL.push_back(a);
   image_transport::ImageTransport it_(nh_);
 
   
 
   variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm1/trajectory_acc",3,varianceCallback);
   variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",3,varianceDeepCallback);
+
+  variance_sub_2 = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm2/trajectory_acc",3,varianceCallback2);
+  variance_deep_sub_2 = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn2/trajectory_acc",3,varianceDeepCallback2);
 
 
 	    radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",3,radarPoseCallback);
