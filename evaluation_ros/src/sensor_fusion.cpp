@@ -57,34 +57,32 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 	ps3.header=msg->header;
 	ps4.header=msg->header;
 
-  int gtperson_ = 0;
-  person_ = 0;
 	switch(exp_type_){
 
 		case 1:
 			//experiment 1
-			camX  =msg->gt[gtperson_].pose.position.z;
-			camY  =msg->gt[gtperson_].pose.position.x;
-			camZ  =msg->gt[gtperson_].pose.position.y;
+			camX  =msg->gt[person_].pose.position.z;
+			camY  =msg->gt[person_].pose.position.x;
+			camZ  =msg->gt[person_].pose.position.y;
 			break;
 		case 2:
 			//experiment 2 - moving
-			camX  =msg->gt[gtperson_].pose.position.x;
-			camY  =msg->gt[gtperson_].pose.position.y;
-			camZ  =msg->gt[gtperson_].pose.position.z;
+			camX  =msg->gt[person_].pose.position.x;
+			camY  =msg->gt[person_].pose.position.y;
+			camZ  =msg->gt[person_].pose.position.z;
 			break;
 
 		case 3:
 			//experiment 3 - multi
-			camX  =msg->gt[gtperson_].pose.position.x;
-			camY  =msg->gt[gtperson_].pose.position.z;
-			camZ  =msg->gt[gtperson_].pose.position.y;
+			camX  =msg->gt[person_].pose.position.x;
+			camY  =msg->gt[person_].pose.position.z;
+			camZ  =msg->gt[person_].pose.position.y;
 			break;	
 		default:
 			//experiment 1
-			camX  =msg->gt[gtperson_].pose.position.z;
-			camY  =msg->gt[gtperson_].pose.position.x;
-			camZ  =msg->gt[gtperson_].pose.position.y;
+			camX  =msg->gt[person_].pose.position.z;
+			camY  =msg->gt[person_].pose.position.x;
+			camZ  =msg->gt[person_].pose.position.y;
 	}
 	radX =msg->rad[person_].pose.position.x;
 	radY =msg->rad[person_].pose.position.y;
