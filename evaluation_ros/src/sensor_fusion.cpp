@@ -58,6 +58,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 	ps4.header=msg->header;
 
   int gtperson_ = 0;
+  person_ = 0;
 	switch(exp_type_){
 
 		case 1:
@@ -214,7 +215,7 @@ int main(int argc,char* argv[])
 	nh_.getParam("/sensor_fusion/person",person_);
 
 
-	ros::Subscriber variance_deep_sub_ = nh_.subscribe<radar::radar_fusion>("/evaluator_mux",20, inputCallback);
+	ros::Subscriber variance_deep_sub_ = nh_.subscribe<radar::radar_fusion>("/evaluator_remux",20, inputCallback);
 	final_poses_kamlan_cnn_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/cnn/wighted_filter/pose",1);
 	final_poses_switching_svm_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/svm/switching_filter/pose",1);
 	final_poses_kamlan_svm_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/svm/wighted_filter/pose",1);

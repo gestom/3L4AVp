@@ -56,6 +56,7 @@
     <arg name="single" default="$(arg single)" />
    </include>
 
+    <node name="remux" pkg="radar" type="remuxer.py"  respawn="true" />
 
    <node pkg="ground_truth_exp_3" name="ground_truth_exp_3" type="ground_truth_exp_3.py" respawn="true">
     <param name="/person" type="int" value="$(arg personToTrack)"/>

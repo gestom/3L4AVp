@@ -38,6 +38,7 @@
   </node>
 
 
+    <node name="remux" pkg="radar" type="remuxer.py"  respawn="true" />
 
 
   <node pkg="radar" type="legFilter" name="legFilter"/>

@@ -46,6 +46,7 @@
     <arg name="single" default="$(arg single)" />
    </include>
 
+    <node name="remux" pkg="radar" type="remuxer.py"  respawn="true" />
 
 
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_velodyne" args="0 0 0 0 0 0 map velodyne 100"/>
