@@ -225,10 +225,11 @@ def radarCallback(msg):
 		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable))
 
 class PointnetThread(threading.Thread):
-	def __init__(self, queue, publisher, nPoints):
+	def __init__(self, queue, publisher, nPoints, rawPublisher):
 		threading.Thread.__init__(self)
 		self.queue = queue
 		self.publisher = publisher
+		self.rawpublisher = rawPublisher
 		self.pointBuffer = []
 		self.labelBuffer = []
 		self.frameNumber = 0
@@ -392,12 +393,7 @@ class PointnetThread(threading.Thread):
 
 			#publish
 			self.publish(preds, msg)
-
-	def probMax(self, x):
-	        if x == 1:
-	                return 1
-	        else:
-	                return x + self.probMax(x - 1)
+			self.rawpublish(preds, msg)
 
 	def getBatches(self):
 
@@ -469,34 +465,67 @@ class PointnetThread(threading.Thread):
 
 		return pred_val
 
-	# def infer(self, msg):
+        def rawpublish(self, points, originalMsg):
+                
 
-		# print("Running inference")
 
-		# current_data = np.array(msg[0] * self.batchSize)
-		# # current_label = np.array(msg[1] * self.batchSize)
 
-		# file_size = current_data.shape[0]
-		# num_batches = file_size
 
-		# print(current_label)
 
-		# feed_dict = {self.ops['pointclouds_pl']: current_data[0:self.batchSize, :, :],
-		# 	self.ops['labels_pl']: current_label[0:self.batchSize],
-		# 	self.ops['is_training_pl']: True}
 
-		# summary, step, _, loss_val, pred_val = self.sess.run([self.ops['merged'], self.ops['step'], self.ops['train_op'], self.ops['loss'], self.ops['pred']],
-		# 	feed_dict=feed_dict)
 
-		# inputPoints = msg[0]
-		# labels = msg[1]
 
-		# feed_dict = {self.pointclouds_pl: inputPoints,
-		# 			 self.labels_pl: labels,
-		# 			 self.is_training_pl: False}
-		# lossf, predsf = self.sess.run([self.loss, self.pred_softmax], feed_dict=feed_dict)
+		points = points[-1]
+		points = points[:, :self.nClasses]
 
-		# return (lossf, predsf)
+		classPoints = []
+		for i in range(self.nClasses):
+			classPoints.append([])
+
+		for i in range(0, len(points)):
+			p = points[i]
+			pos = originalMsg[0]
+
+			if p[1] > self.threshold:
+				classPoints[1].append([pos[i][0], pos[i][1], pos[i][2], p[1]])
+			else:
+				classPoints[0].append([pos[i][0], pos[i][1], pos[i][2], p[1]])
+
+
+		#publish points
+		msg = msgTemplate.Marker()
+
+		msg.header.frame_id = "base_radar_link";
+		msg.header.stamp = rospy.Time.now();
+
+		msg.ns = "points"
+		msg.id = i
+		msg.type = 7
+		msg.action = 0
+
+		msg.scale.x = 0.1
+		msg.scale.y = 0.1
+		msg.scale.z = 0.1
+
+		msg.color.a = 1.0
+                msg.color.r = 0.0
+		msg.color.g = 0.0
+		msg.color.b = 1.0
+
+		msg.lifetime = rospy.Duration.from_sec(1)
+
+                msg.points = []
+                for i in range(0, 2):
+		        for j in classPoints[i]:
+			        msg.points.append(Point(x = j[0], y = j[1], z = j[3]))
+
+		self.rawpublisher.publish(msg)
+
+
+
+
+
+
 
 	def publish(self, points, originalMsg):
 
@@ -589,8 +618,9 @@ if __name__ == '__main__':
 	rospy.Subscriber("/visualization_marker", msgTemplate.Marker, legDetectorCallback)
 
 	pointsPublisher = rospy.Publisher('/deep_radar/out/points', msgTemplate.Marker, queue_size=0)
+	rawPublisher = rospy.Publisher('/deep_radar/out/points_raw', msgTemplate.Marker, queue_size=0)
 
-	pointnetThread = PointnetThread(pointnetQueue, pointsPublisher, maxNumPoints)
+	pointnetThread = PointnetThread(pointnetQueue, pointsPublisher, maxNumPoints, rawPublisher)
 	pointnetThread.start()
 
 	rospy.spin()

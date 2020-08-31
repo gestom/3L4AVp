@@ -29,7 +29,7 @@ def swap(msg, gt, prev, debug):
                 x1 = msg[arrIdx].pose.position.x
                 y1 = msg[arrIdx].pose.position.y
                 x2 = gt[0].pose.position.x
-                y2 = gt[0].pose.poisition.y
+                y2 = gt[0].pose.position.y
                 distance = ((x1-x2)**2 + (y1-y2)**2)**0.5
                 if distance < closestCluster:
                     closestCluster = distance

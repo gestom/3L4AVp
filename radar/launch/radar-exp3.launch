@@ -1,6 +1,6 @@
 <launch>
   <!--This variable controls which person is being tracked:-->
-  <arg name="personToTrack" default="1" />
+  <arg name="personToTrack" default="0" />
 
   <!-- action and reconfigure clients to control the system
        <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="Reconfigurator"/>
@@ -63,6 +63,7 @@
     <param name="/path" type="string" value="$(find ground_truth_exp_3)/src/3d.txt"/>
     </node>
 
+    <node pkg="radar" name="precrec" type="prec-rec.py" />
 
 
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_velodyne" args="0 0 0 0 0 0 map velodyne 100"/>
