@@ -97,17 +97,20 @@ while not rospy.is_shutdown():
     vals = interp(float(str(rospy.Time.now())))
 
     print(vals)
-    vals[2] = vals[2] * 0.00082
-    vals[5] = vals[5] * 0.00082
+    vals[2] = vals[2] * 0.001
+    vals[5] = vals[5] * 0.001
 
-    vals[0] = vals[2] * ((vals[0] - 312.674) * (1/627.56347))
-    vals[3] = vals[5] * ((vals[3] - 312.674) * (1/627.56347))
+    vals[0] = vals[2] * ((vals[0] - 312.674) * (1/627.5634765625))
+    vals[3] = vals[5] * ((vals[3] - 312.674) * (1/627.5634765625))
+
+    #vals[0] = vals[2] * ((vals[0] - 307.674) * (1/640.56347))
+    #vals[3] = vals[5] * ((vals[3] - 307.674) * (1/640.56347))
+
 
     vals[1] = vals[2] * ((vals[1] - 241.3366) * (1/627.56347))
     vals[4] = vals[5] * ((vals[4] - 241.3366) * (1/627.56347))
 
     msg = PoseArray()
-    msg.header.frame_id = "camera_depth_optical_frame"
     msg.header.frame_id = "map"
     msg.header.stamp = rospy.Time.now()
 
