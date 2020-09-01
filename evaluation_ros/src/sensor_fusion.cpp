@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/Pose.h>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
@@ -11,7 +13,7 @@ using namespace std;
 float temporalFilter = 0.5;
 float outlierDistance = 0.5;
 
-ros::Publisher final_poses_kamlan_cnn_,final_poses_switching_svm_,final_poses_kamlan_svm_,final_poses_switching_cnn_;
+ros::Publisher final_poses_kamlan_cnn_,final_poses_switching_svm_,final_poses_kamlan_svm_,final_poses_switching_cnn_, reremuxer;
 
 int laserOutliers,laserMeasurements,radarOutliers,radarMeasurements,kalmanOutliers,switchingOutliers,deepOutliers,deepMeasurements,kalmanDeepOutliers,switchingDeepOutliers;
 
@@ -75,8 +77,8 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 		case 3:
 			//experiment 3 - multi
 			camX  =msg->gt[person_].pose.position.x;
-			camY  =msg->gt[person_].pose.position.z;
-			camZ  =msg->gt[person_].pose.position.y;
+			camY  =-msg->gt[person_].pose.position.y;
+			camZ  =msg->gt[person_].pose.position.z;
 			break;	
 		default:
 			//experiment 1
@@ -93,11 +95,13 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 	deepX=msg->deep[person_].pose.position.x;
 	deepY=msg->deep[person_].pose.position.y;
 	deepC =msg->deep[person_].covariance[0];
-	//cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
-	//cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
-	//cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;
-	//cout << "gt   "<< msg->gt[0].pose.position.x <<"   "<< msg->gt[0].pose.position.y<< " " <<  camZ << endl;
-	//cout << "gt: " << camX << " " << camY << " " << camZ << endl;
+	/*cout << "rad   "<< msg->rad[0].pose.position.x <<"   "<< msg->rad[0].pose.position.y<<endl;
+	cout << "leg   "<< msg->leg[0].pose.position.x <<"   "<< msg->leg[0].pose.position.y<<endl;
+	cout << "deep   "<< msg->deep[0].pose.position.x <<"   "<< msg->deep[0].pose.position.y<<endl;*/
+	/*cout << "gt   "<< msg->gt[0].pose.position.x  <<"   "<< msg->gt[0].pose.position.y <<"   "<< msg->gt[0].pose.position.z << endl;
+	cout << "gt: " << camX << " " << camY << " " << camZ << endl;*/
+
+  
 
 	if (radX == lastRadX && radY == lastRadY) numRad++; else numRad = 0; 
 	if (lasX == lastLasX && lasY == lastLasY) numLas++; else numLas = 0;
@@ -196,11 +200,63 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 		switchingDeepOutliers++; 
 	}
 
-
+	cout<< "EVALVERSION-TS/Cam/Rad/Leg/Deep" << " " << ros::Time::now() << " " << camX << " " << camY << " " << radX << " " << radY << " " << radC << " " <<  lasX << " " << lasY << " " << lasC <<  " " << deepX << " " << deepY << " " << deepC << endl;
 
 	printf("TS/Las/Rad/Deep/KF/SF/KFD/SFD/numLas/DistCam/DistLas/DistRad/DistDeep/DistKF/DistSF/DistKFD/DistSFD/gtx/gty/gtz/radx/rady %f %f %f %f %f %f %f %f %i %f %f %f %f %f %f %f %f %f %f %f %f %f\n",ros::Time::now().toSec(), dist(lasX,lasY,camX,camY),dist(radX,radY,camX,camY),dist(deepX,deepY,camX,camY),dist(kfX,kfY,camX,camY),dist(sfX,sfY,camX,camY),dist(kfdX,kfdY,camX,camY),dist(sfdX,sfdY,camX,camY),numLas, dist(0, 0, camX, camY), dist(0, 0, lasX, lasY), dist(0, 0, radX, radY), dist(0, 0, deepX, deepY), dist(0, 0, kfX, kfY), dist(0, 0, sfX, sfY), dist(0, 0, kfdX, kfdY), dist(0, 0, sfdX, sfdY), camX, camY, camZ, radX, radY);
+
+
+    radar::radar_fusion message;
+    geometry_msgs::PoseWithCovariance pose;
+    header = msg->header;
+    header.frame_id = "map";
+    message.header = header;
+
+
+  std::vector<std::vector<float> > rad;
+  std::vector<std::vector<float> > cam;
+  std::vector<std::vector<float> > leg;
+  std::vector<std::vector<float> > deep;
+
+    pose.pose.position.x = radX;
+    pose.pose.position.y = radY;
+    rad.push_back(pose);
+    message.rad = constructPoseWCovariance(rad);
+    pose.pose.position.x = camX;
+    pose.pose.position.y = camY;
+    cam.push_back(pose);
+    message.cam = constructPoseWCovariance(rad);
+    message.gt = cam;
+    pose.pose.position.x = deepX;
+    pose.pose.position.y = deepY;
+    deep.push_back(pose);
+    message.deep = constructPoseWCovariance(rad);
+    message.deep = deep;
+    pose.pose.position.x = lasX;
+    pose.pose.position.y = lasY;
+    leg.push_back(pose);
+    message.leg = constructPoseWCovariance(rad);
+    reremuxer.publish(message);
 }
 
+std::vector<geometry_msgs::PoseWithCovariance>  constructPoseWCovariance (std::vector<std::vector<float> > vec){
+
+  std::vector<geometry_msgs::PoseWithCovariance> field;
+  for(unsigned int i = 0;i<vec.size();i++){
+
+    geometry_msgs::PoseWithCovariance pose;
+    pose.pose.position.x = vec[i][0];
+    pose.pose.position.y= vec[i][1];
+    pose.pose.position.z= vec[i][2];
+    pose.covariance = { 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0};
+    field.push_back(pose);
+  }
+  return field;
+}
 
 int main(int argc,char* argv[])
 {
@@ -214,6 +270,7 @@ int main(int argc,char* argv[])
 
 
 	ros::Subscriber variance_deep_sub_ = nh_.subscribe<radar::radar_fusion>("/evaluator_remux",20, inputCallback);
+	reremuxer = nh_.advertise<radar::radar_fusion>("/evaluator_reremuxer",1);
 	final_poses_kamlan_cnn_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/cnn/wighted_filter/pose",1);
 	final_poses_switching_svm_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/svm/switching_filter/pose",1);
 	final_poses_kamlan_svm_ = nh_.advertise<geometry_msgs::PoseArray>("/filter/svm/wighted_filter/pose",1);
