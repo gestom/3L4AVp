@@ -96,14 +96,14 @@ while not rospy.is_shutdown():
 
     p = Pose()
     p.position.x = vals[2]
-    p.position.y = -vals[0]
+    p.position.y = vals[0]
     p.position.z = 0#vals[1]
     p.orientation.w = 1
     msg.poses.append(p)
 
     p = Pose()
     p.position.x = vals[5]
-    p.position.y = -vals[3]
+    p.position.y = vals[3]
     p.position.z = 0#vals[4]
     p.orientation.w = 1
     msg.poses.append(p)
