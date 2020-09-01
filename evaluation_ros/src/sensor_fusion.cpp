@@ -77,7 +77,7 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 		case 3:
 			//experiment 3 - multi
 			camX  =msg->gt[person_].pose.position.x;
-			camY  =-msg->gt[person_].pose.position.y;
+			camY  =msg->gt[person_].pose.position.y;
 			camZ  =msg->gt[person_].pose.position.z;
 			break;	
 		default:
@@ -219,22 +219,27 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 
     pose.pose.position.x = radX;
     pose.pose.position.y = radY;
-    rad.push_back(pose);
-    message.rad = constructPoseWCovariance(rad);
+    std::vector<geometry_msgs::PoseWithCovariance> poseArray1;
+    poseArray1.push_back(pose);
+    message.rad = poseArray1;
     pose.pose.position.x = camX;
     pose.pose.position.y = camY;
-    cam.push_back(pose);
-    message.cam = constructPoseWCovariance(rad);
-    message.gt = cam;
+
+    std::vector<geometry_msgs::PoseWithCovariance> poseArray2;
+    poseArray2.push_back(pose);
+    message.gt = poseArray2;
     pose.pose.position.x = deepX;
     pose.pose.position.y = deepY;
-    deep.push_back(pose);
-    message.deep = constructPoseWCovariance(rad);
-    message.deep = deep;
+
+    std::vector<geometry_msgs::PoseWithCovariance> poseArray3;
+    poseArray3.push_back(pose);
+    message.deep = poseArray3;
     pose.pose.position.x = lasX;
     pose.pose.position.y = lasY;
-    leg.push_back(pose);
-    message.leg = constructPoseWCovariance(rad);
+
+    std::vector<geometry_msgs::PoseWithCovariance> poseArray4;
+    poseArray4.push_back(pose);
+    message.leg = poseArray4;
     reremuxer.publish(message);
 }
 
