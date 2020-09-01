@@ -44,6 +44,7 @@ for i in coords:
 
 def interp(t):
 
+    #bspline
     tax = interpolate.splrep(ts, ax)
     nax = interpolate.splev(t, tax)
     tay = interpolate.splrep(ts, ay)
@@ -57,6 +58,23 @@ def interp(t):
     nby = interpolate.splev(t, tby)
     tbz = interpolate.splrep(ts, bz)
     nbz = interpolate.splev(t, tbz)
+
+    #alternative
+    kind = "linear"
+    kind = "cubic"
+    tax = interpolate.interp1d(ts, ax, kind=kind)
+    nax = tax(t)
+    tay = interpolate.interp1d(ts, ay, kind=kind)
+    nay = tay(t)
+    taz = interpolate.interp1d(ts, az, kind=kind)
+    naz = taz(t)
+
+    tbx = interpolate.interp1d(ts, bx, kind=kind)
+    nbx = tbx(t)
+    tby = interpolate.interp1d(ts, by, kind=kind)
+    nby = tby(t)
+    tbz = interpolate.interp1d(ts, bz, kind=kind)
+    nbz = tbz(t)
 
     return [nax, nay, naz, nbx, nby, nbz]
 

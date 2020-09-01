@@ -27,6 +27,8 @@ def callback(msg):
 
 	if msg.id != 0:
 
+                originalMsg = msg
+
 		buf = []
 		for i in msg.points:
 			buf.append([i.x, i.y])
@@ -65,8 +67,8 @@ def callback(msg):
 
 			msg = msgTemplate.Marker()
 
-			msg.header.frame_id = "base_radar_link";
-			msg.header.stamp = rospy.Time.now();
+			msg.header.frame_id = "base_radar_link"
+			msg.header.stamp = originalMsg.header.stamp
 
 			msg.ns = "clusters"
 			msg.id = i
@@ -106,7 +108,7 @@ def callback(msg):
 		msg = PoseArray()
 
 		msg.header.frame_id = "base_radar_link";
-		msg.header.stamp = rospy.Time.now();
+		msg.header.stamp = originalMsg.header.stamp
 
 		msg.poses = []
 
