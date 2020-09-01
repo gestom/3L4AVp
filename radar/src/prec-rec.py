@@ -78,14 +78,6 @@ def Dcallback(msg):
 def Scallback(msg):
     global latestGT, resultsS
 
-    minProb = 999999999
-    maxProb = -999999999
-    for point in msg.points:
-        if point.z < minProb:
-            minProb = point.z
-        if point.z > maxProb:
-            maxProb = point.z
-
     #normalised points
     nPoints = []
     for point in msg.points:
@@ -123,10 +115,9 @@ def Scallback(msg):
                 if insideClust:
                     resultsS[thresh]["fn"] += 1
 
-
 def listener():
     global resultsD, resultsS
-    rospy.init_node('prec-rec')
+    rospy.init_node('precrec')
     rospy.Subscriber("/radar_detector_ol/markers_prob", msgTemplate.Marker, Scallback)
     rospy.Subscriber("/deep_radar/out/points_raw", msgTemplate.Marker, Dcallback)
     rospy.Subscriber("/person/ground_truth", PoseArray, GTcallback)

@@ -62,21 +62,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
 
 	if ( !isinf(x) && !isinf(y) && !isinf(z) )
 	{
-
-
-		//z = z/numPoints;  
-		//y = -y/numPoints;  
-		//x = x/numPoints; 
-
-        //exp1: 
-		/*z = x/numPoints;  
-		x = y/numPoints; 
-        y = 0;*/
-
-        //exp2:
 		z = z/numPoints;  
 		x = x/numPoints; 
-        y = -y/numPoints;
+    y = -y/numPoints;
 
     std_msgs::Header header;
     geometry_msgs:: PoseArray ps;
@@ -86,7 +74,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& depth_msg)
     pos.position.y=y;
     pos.position.z=z;
     ps.header=depth_msg->header;
-    //ps.header.frame_id="map";
+    ps.header.frame_id="map";
     ps.poses.push_back(pos);
     camera_ground_truth_publihser_.publish(ps);
 	}

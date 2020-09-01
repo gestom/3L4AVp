@@ -499,7 +499,7 @@ void Object3dDetector::classify(int type) {
           geometry_msgs::Point point;
           point.x = it->centroid[0];
           point.y = it->centroid[1];
-          point.z = prob_estimates[0];
+          point.z = prob_estimates[1];
           marker_prob.points.push_back(point);
 				  if(prob_estimates[0] > human_probability_) {
 					  svm_find_human = true;
