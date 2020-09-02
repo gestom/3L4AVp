@@ -42,6 +42,7 @@ int main(int argc, char **argv)
   const  tf::TransformListener tf_listener;
 	radar_pub_  = nh_.advertise<sensor_msgs::PointCloud2>("/radar/RScan/aligned", 1);
   radar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>("/radar/RScan", 10,callback);
-  ros::spin();
+  ros::MultiThreadedSpinner spinner(4);
+  spinner.spin();
 	return 0;
 }

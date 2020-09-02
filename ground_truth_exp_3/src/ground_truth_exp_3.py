@@ -111,21 +111,21 @@ while not rospy.is_shutdown():
     vals[4] = vals[5] * ((vals[4] - 241.3366) * (1/627.56347))
 
     msg = PoseArray()
-    msg.header.frame_id = "map"
+    msg.header.frame_id = "camera_depth_optical"
     msg.header.stamp = rospy.Time.now()
 
     msg.poses = []
 
     p = Pose()
-    p.position.x = vals[2]-0.5
-    p.position.y = -vals[0]+0.227
+    p.position.x = vals[2]-0.4
+    p.position.y = -vals[0]
     p.position.z = 0#vals[1]
     p.orientation.w = 1
     msg.poses.append(p)
 
     p = Pose()
-    p.position.x = vals[5]-0.5
-    p.position.y = -vals[3]+0.227
+    p.position.x = vals[5]-0.4
+    p.position.y = -vals[3]
     p.position.z = 0#vals[4]
     p.orientation.w = 1
     msg.poses.append(p)
