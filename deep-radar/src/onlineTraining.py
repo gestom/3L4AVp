@@ -12,6 +12,7 @@ import threading
 
 import numpy as np
 import tf as rostf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from numpy.random import seed
 
@@ -695,6 +696,7 @@ if __name__ == '__main__':
 	pointnetThread = PointnetThread(pointnetQueue, pointsPublisher, maxNumPoints, rawPublisher)
 	pointnetThread.start()
 
+        sys.stderr.write("Deep-radar Ready.")
 	rospy.spin()
 
 	pointnetQueue.put("quit")
