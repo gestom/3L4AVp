@@ -1,0 +1,8 @@
+*.log
+*.tmp
+*.
+*.tm
+*.tp
+*.fig
+*.pdf
+*.o
