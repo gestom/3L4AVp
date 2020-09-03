@@ -26,6 +26,7 @@ import laser_geometry.laser_geometry as lg
 from visualization_msgs import msg as msgTemplate
 from people_msgs.msg import PositionMeasurementArray
 from geometry_msgs.msg import Point
+from geometry_msgs.msg import PointStamped
 from sensor_msgs.msg import PointCloud2
 
 tf.random.set_random_seed(seed=1)
@@ -33,8 +34,8 @@ tf.random.set_random_seed(seed=1)
 tfListener = None
 legDetectorBuffers = []
 legDetectorFrame = None
-maxTimeSinceLaser = rospy.Duration(0, 250000000) #secs, nanosecs
-maxDistanceToObj = 0.5
+maxTimeSinceLaser = rospy.Duration(0, 330000000) #secs, nanosecs
+maxDistanceToObj = 0.6
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
 maxNumPoints = 40
@@ -42,6 +43,7 @@ pointsAllowedToDuplicate = 6
 biasX, biasY = 0.0, 0.0
 biasBufferX, biasBufferY = [], []
 biasCount = 25
+trainingPointsPublisher = None
 
 def legDetectorCallback(msg):
 	global legDetectorBuffers, legDetectorFrame
@@ -54,8 +56,8 @@ def legDetectorCallback(msg):
 	legDetectorBuffers[msg.id] = msg
 
 def radarCallback(msg):
-	global legDetectorBuffers, legDetectorFrame, tfListener, pointnetQueue, maxNumPoints, biasX, biasY, biasCount, biasBufferY, biasBufferX
-	
+	global legDetectorBuffers, legDetectorFrame, tfListener, pointnetQueue, maxNumPoints, biasX, biasY, biasCount, biasBufferY, biasBufferX, trainingPointsPublisher
+
 	trainable = True
 
 	if legDetectorFrame == None or len(legDetectorBuffers) == 0:
@@ -72,15 +74,22 @@ def radarCallback(msg):
 
 	#get transform from leg to radar
 	transform = None
+        transformedLegDets = []
+
 	try:
-		transform = tfListener.lookupTransform(msg.header.frame_id, legDetectorFrame, rospy.Time(0))
+		transform = tfListener.lookupTransform(legDetectorFrame, msg.header.frame_id, rospy.Time(0))
+                for i in usedlegDetectorBufs:
+                    point = PointStamped()
+                    point.header.frame_id = legDetectorFrame
+                    point.header.stamp = i.header.stamp
+                    point.point.x = i.pose.position.x
+                    point.point.y = i.pose.position.y
+                    point.point.z = i.pose.position.z
+                    p = tfListener.transformPoint(msg.header.frame_id, point)
+                    transformedLegDets.append(p)
 	except:
 		print("Aborting, unable to get tf transformation")
 		return
-
-	trans_mat = rostf.transformations.translation_matrix(transform[0])
-	rot_mat = rostf.transformations.quaternion_matrix(transform[1])
-	mat = np.dot(trans_mat, rot_mat)
 
 	points = []
 	labels = []
@@ -91,22 +100,21 @@ def radarCallback(msg):
 	minX, minY, minZ = 0, 0, 0
 	maxX, maxY, maxZ = 0, 0, 0
 
+        posExamples = []
+        negExamples = []
+
 	point_generator = pc2.read_points(msg)
 	for point in point_generator:
 
 		isObject = False
 
-		transformedPoint = np.append(point[0:3], 1.0)
-		transformedPoint = np.dot(mat, transformedPoint)
-		point = np.append(transformedPoint[0:3], point[3:])
-
 		now = rospy.get_rostime()
 
-		for obj in usedlegDetectorBufs:
+		for obj in transformedLegDets:
 			if obj is None or now - maxTimeSinceLaser > obj.header.stamp:
 				continue
-			diffX = abs(obj.pose.position.x - point[0])
-			diffY = abs(obj.pose.position.y - point[1])
+			diffX = abs(obj.point.x - point[0])
+			diffY = abs(obj.point.y - point[1])
 			distance = ((diffX ** 2) + (diffY ** 2)) ** 0.5
 
 			if distance < maxDistanceToObj:
@@ -137,11 +145,74 @@ def radarCallback(msg):
 
 		if isObject:
 			labels.append(1)
+                        posExamples.append([x, y, z])
 		else:
 			labels.append(0)
+                        negExamples.append([x, y, z])
 
 	if nInCluster == 0:
 		trainable = False
+
+	tmsg = msgTemplate.Marker()
+        tmsg.header = msg.header
+
+	tmsg.ns = "points-pos"
+	tmsg.id = 0
+	tmsg.type = 7
+	tmsg.action = 0
+
+	tmsg.scale.x = 0.15
+	tmsg.scale.y = 0.15
+	tmsg.scale.z = 0.15
+
+	tmsg.color.a = 1.0
+        tmsg.color.r = 1.0
+	tmsg.color.g = 0.0
+	tmsg.color.b = 1.0
+
+	tmsg.lifetime = rospy.Duration.from_sec(1)
+
+        tmsg.points = []
+	for j in posExamples:
+		tmsg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+
+	trainingPointsPublisher.publish(tmsg)
+
+        tmsg.ns = "points-neg"
+	tmsg.id = 1
+        tmsg.color.r = 1.0
+	tmsg.color.g = 1.0
+	tmsg.color.b = 0.0
+
+	tmsg.scale.x = 0.2
+	tmsg.scale.y = 0.2
+	tmsg.scale.z = 0.2
+
+        tmsg.points = []
+	for j in negExamples:
+		tmsg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+
+	trainingPointsPublisher.publish(tmsg)
+
+        tmsg.ns = "points-centre"
+	tmsg.id = 1
+        tmsg.color.r = 0.0
+	tmsg.color.g = 0.0
+	tmsg.color.b = 0.0
+
+	tmsg.scale.x = 0.4
+	tmsg.scale.y = 0.4
+	tmsg.scale.z = 0.4
+
+        tmsg.points = []
+	for obj in transformedLegDets:
+		if obj is None or now - maxTimeSinceLaser > obj.header.stamp:
+			continue
+	        tmsg.points.append(Point(x = obj.point.x, y = obj.point.y, z = obj.point.z))
+
+	trainingPointsPublisher.publish(tmsg)
+
+
 
 	#calculate normalised values
 	sceneSizeX = maxX - minX
@@ -618,6 +689,7 @@ if __name__ == '__main__':
 	rospy.Subscriber("/visualization_marker", msgTemplate.Marker, legDetectorCallback)
 
 	pointsPublisher = rospy.Publisher('/deep_radar/out/points', msgTemplate.Marker, queue_size=0)
+	trainingPointsPublisher = rospy.Publisher('/deep_radar/training', msgTemplate.Marker, queue_size=0)
 	rawPublisher = rospy.Publisher('/deep_radar/out/points_raw', msgTemplate.Marker, queue_size=0)
 
 	pointnetThread = PointnetThread(pointnetQueue, pointsPublisher, maxNumPoints, rawPublisher)

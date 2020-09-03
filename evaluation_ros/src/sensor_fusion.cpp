@@ -63,9 +63,9 @@ void inputCallback(const radar::radar_fusionConstPtr& msg)
 
 		case 1:
 			//experiment 1
-			camX  =msg->gt[person_].pose.position.z;
-			camY  =msg->gt[person_].pose.position.x;
-			camZ  =msg->gt[person_].pose.position.y;
+			camX  =msg->gt[person_].pose.position.x;
+			camY  =msg->gt[person_].pose.position.y;
+			camZ  =msg->gt[person_].pose.position.z;
 			break;
 		case 2:
 			//experiment 2 - moving
