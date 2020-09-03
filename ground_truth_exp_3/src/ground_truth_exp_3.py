@@ -4,19 +4,20 @@ import time
 from scipy import interpolate
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
-
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image
 import tf2_ros
 import tf2_geometry_msgs
+
+val = None
 time.sleep(2)
+
 def callback(_):
     global val, pub
     if val == None:
         print("waiting")
     else:
         pub.publish(val)
-
 
 pub = rospy.Publisher('/person/ground_truth', PoseArray, queue_size=10)
 rospy.init_node("ground_truth_exp_3")
@@ -89,8 +90,6 @@ def interp(t):
     nbz = tbz(t)
 
     return [nax, nay, naz, nbx, nby, nbz]
-
-val = None
 
 while not rospy.is_shutdown():
     if str(rospy.Time.now()) == "0":
