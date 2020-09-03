@@ -4,9 +4,13 @@ import time
 from scipy import interpolate
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image
+import tf2_ros
+import tf2_geometry_msgs
 
 val = None
+time.sleep(2)
 
 def callback(_):
     global val, pub
@@ -24,6 +28,14 @@ person_ = rospy.get_param("/ground_truth_exp_3/person")
 path_ = rospy.get_param("/ground_truth_exp_3/path")
 
 print(person_ , path_)
+tfBuffer = tf2_ros.Buffer()
+listener = tf2_ros.TransformListener(tfBuffer)
+
+
+try:
+    trans = tfBuffer.lookup_transform('map', 'camera_depth_optical_frame', rospy.Time(),rospy.Duration(1))
+except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+    print("bullshit happend")
 
 coords = []
 with open(path_, "r") as f:
@@ -108,28 +120,42 @@ while not rospy.is_shutdown():
 
     vals[1] = vals[2] * ((vals[1] - 241.3366) * (1/627.56347))
     vals[4] = vals[5] * ((vals[4] - 241.3366) * (1/627.56347))
-
+    # TODO proper transformation to map frame
     msg = PoseArray()
-    msg.header.frame_id = "camera_depth_optical"
+    msg.header.frame_id = "map"
     msg.header.stamp = rospy.Time.now()
-
     msg.poses = []
 
-    p = Pose()
-    p.position.x = vals[2]-0.4
-    p.position.y = -vals[0]
-    p.position.z = 0#vals[1]
-    p.orientation.w = 1
-    msg.poses.append(p)
+    p = PoseStamped()
+    p.pose.position.x = vals[2]
+    p.pose.position.y = -vals[0]
+    p.pose.position.z = 0#vals[1]
+    p.pose.orientation.w = 1
+    p_tran = PoseStamped()
+    p_tran = tf2_geometry_msgs.do_transform_pose(p, trans)
 
-    p = Pose()
-    p.position.x = vals[5]-0.4
-    p.position.y = -vals[3]
-    p.position.z = 0#vals[4]
-    p.orientation.w = 1
-    msg.poses.append(p)
+    p_out = Pose()
+    p_out.position.x = p_tran.pose.position.x
+    p_out.position.y = p_tran.pose.position.y
+    p_out.position.z = p_tran.pose.position.z
+    p_out.orientation.w = p_tran.pose.orientation.w
+    msg.poses.append(p_out)
+
+    p = PoseStamped()
+    p.pose.position.x = vals[5]
+    p.pose.position.y = -vals[3]
+    p.pose.position.z = 0#vals[4]
+    p.pose.orientation.w = 1
+    p_tran = PoseStamped()
+    p_tran = tf2_geometry_msgs.do_transform_pose(p, trans)
+    p_out = Pose()
+    p_out.position.x = p_tran.pose.position.x
+    p_out.position.y = p_tran.pose.position.y
+    p_out.position.z = p_tran.pose.position.z
+    p_out.orientation.w = p_tran.pose.orientation.w
+    msg.poses.append(p_out)
 
     #pub.publish(msg)
     val = msg
 
-    time.sleep(0.01)
+    #time.sleep(0.01)
