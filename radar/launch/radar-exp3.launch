@@ -72,7 +72,7 @@
 
 <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_laser" args="0.3 -0.078 0 0 0 0 map laser 100"/>
 
-<node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args=" 0.333 -0.406 0 0.47 0 0  map base_radar_link 100"/>
+<node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_base_radar_link" args=" 0.2 -0.0 0 0.27 0 0  map base_radar_link 100"/>
 r
   <node pkg="tf" type="static_transform_publisher" name="static_tf_map_to_camera_depth_optical_frame" args="-0.0 -0.0 0 0.0 0 0  map camera_depth_optical_frame 100"/>
   
