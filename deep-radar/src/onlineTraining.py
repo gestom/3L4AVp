@@ -36,7 +36,7 @@ tfListener = None
 legDetectorBuffers = []
 legDetectorFrame = None
 maxTimeSinceLaser = rospy.Duration(0, 330000000) #secs, nanosecs
-maxDistanceToObj = 0.6
+maxDistanceToObj = 0.5
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
 maxNumPoints = 40
@@ -648,6 +648,9 @@ class PointnetThread(threading.Thread):
 
 			msg.points = []
 			for j in classPoints[i]:
+                                #filter sensor echos
+                                if (j[0]**2 + j[1] ** 2 ) ** 0.5 < 0.3:
+                                    continue
 				# msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
 				msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
 				#msg.points.append(Point(x = j[0] - biasX, y = j[1] - biasY, z = j[2]))

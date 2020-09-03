@@ -10,6 +10,9 @@ lastLeg = None
 lastSVM = None
 lastPN = None
 
+legBuf = []
+camBuf = []
+
 def swap(msg, gt, prev, debug):
 
     if len(gt) == 1:
@@ -134,6 +137,20 @@ def swap(msg, gt, prev, debug):
 
 def callback(msg):
     global publisher, lastLeg, lastSVM, lastPN
+
+    #buffer leg and cam frames, as they are one frame ahead
+    #due to processing time
+
+    camBuf.append(msg.gt)
+    legBuf.append(msg.leg)
+
+    if len(camBuf) < 7:
+        return
+
+    msg.leg = legBuf[0]
+    msg.gt = camBuf[0]
+    del legBuf[0]
+    del camBuf[0]
 
     msg.leg = swap(msg.leg, msg.gt, lastLeg, "las")
     msg.rad = swap(msg.rad, msg.gt, lastSVM, "svm")
