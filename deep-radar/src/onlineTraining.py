@@ -73,25 +73,6 @@ def radarCallback(msg):
 		return True
 	usedlegDetectorBufs = filter(filterOld, legDetectorBuffers)
 
-	#get transform from leg to radar
-	transform = None
-        transformedLegDets = []
-
-	try:
-		transform = tfListener.lookupTransform(legDetectorFrame, msg.header.frame_id, rospy.Time(0))
-                for i in usedlegDetectorBufs:
-                    point = PointStamped()
-                    point.header.frame_id = legDetectorFrame
-                    point.header.stamp = i.header.stamp
-                    point.point.x = i.pose.position.x
-                    point.point.y = i.pose.position.y
-                    point.point.z = i.pose.position.z
-                    p = tfListener.transformPoint(msg.header.frame_id, point)
-                    transformedLegDets.append(p)
-	except:
-		print("Aborting, unable to get tf transformation")
-		return
-
 	points = []
 	labels = []
 
@@ -111,11 +92,11 @@ def radarCallback(msg):
 
 		now = rospy.get_rostime()
 
-		for obj in transformedLegDets:
+		for obj in usedlegDetectorBufs:
 			if obj is None or now - maxTimeSinceLaser > obj.header.stamp:
 				continue
-			diffX = abs(obj.point.x - point[0])
-			diffY = abs(obj.point.y - point[1])
+			diffX = abs(obj.pose.position.x - point[0])
+			diffY = abs(obj.pose.position.y - point[1])
 			distance = ((diffX ** 2) + (diffY ** 2)) ** 0.5
 
 			if distance < maxDistanceToObj:
@@ -206,10 +187,10 @@ def radarCallback(msg):
 	tmsg.scale.z = 0.4
 
         tmsg.points = []
-	for obj in transformedLegDets:
+	for obj in usedlegDetectorBufs:
 		if obj is None or now - maxTimeSinceLaser > obj.header.stamp:
 			continue
-	        tmsg.points.append(Point(x = obj.point.x, y = obj.point.y, z = obj.point.z))
+	        tmsg.points.append(Point(x = obj.pose.position.x, y = obj.pose.position.y, z = obj.pose.position.z))
 
 	trainingPointsPublisher.publish(tmsg)
 
@@ -668,8 +649,8 @@ class PointnetThread(threading.Thread):
 			msg.points = []
 			for j in classPoints[i]:
 				# msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
-				# msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
 				msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+				#msg.points.append(Point(x = j[0] - biasX, y = j[1] - biasY, z = j[2]))
 
 			self.publisher.publish(msg)
 
