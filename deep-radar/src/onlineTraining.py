@@ -179,7 +179,7 @@ def radarCallback(msg):
 			points.append(points[idx % len(points)])
 			labels.append(labels[idx % len(labels)])
 			idx += 1
-		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp))
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp, msg.header.frame_id))
 
 	elif len(points) < maxNumPoints:
 
@@ -193,10 +193,10 @@ def radarCallback(msg):
 			points.append(orderedFeatures[idx][0])
 			labels.append(orderedFeatures[idx][1])
 			idx += 1
-		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp))
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp, msg.header.frame_id))
 
 	elif len(points) == maxNumPoints:
-		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp))
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp, msg.header.frame_id))
 
 	elif len(points) > maxNumPoints:
 		while len(points) > maxNumPoints:
@@ -222,7 +222,7 @@ def radarCallback(msg):
 
 			del points[lowestIntensity]
 			del labels[lowestIntensity]
-		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp))
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp, msg.header.frame_id))
 
 class PointnetThread(threading.Thread):
 	def __init__(self, queue, publisher, nPoints, rawPublisher):
@@ -495,7 +495,7 @@ class PointnetThread(threading.Thread):
 		#publish points
 		msg = msgTemplate.Marker()
 
-		msg.header.frame_id = "base_radar_link"
+		msg.header.frame_id = originalMsg[4]
 		msg.header.stamp = originalMsg[3]
 
 		msg.ns = "points"
@@ -560,7 +560,7 @@ class PointnetThread(threading.Thread):
 
 			msg = msgTemplate.Marker()
 
-			msg.header.frame_id = "base_radar_link"
+			msg.header.frame_id = originalMsg[4]
 			msg.header.stamp = originalMsg[3]
 
 			msg.ns = "points"
