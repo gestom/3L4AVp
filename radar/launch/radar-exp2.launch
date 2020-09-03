@@ -38,6 +38,7 @@
   </node>
 
 
+    <node name="remux" pkg="radar" type="remuxer.py"  respawn="true" />
 
 
   <node pkg="radar" type="legFilter" name="legFilter"/>
@@ -55,6 +56,9 @@
   <include file="$(find radar)/launch/pt.launch"> 
     <arg name="single" default="$(arg single)" />
    </include>
+
+
+    <node pkg="radar" name="precrec" type="prec-rec.py" />
 
 
 

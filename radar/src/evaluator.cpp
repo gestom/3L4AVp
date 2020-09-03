@@ -27,7 +27,7 @@ boost::shared_ptr<image_transport::ImageTransport> it_;
 image_transport::Subscriber sub_depth_;
 image_transport::Publisher depth_pub_;
 ros::Publisher info_pub_;
-ros::Subscriber info_sub_,radar_pose_sub_,leg_pose_sub_,variance_sub_,variance_deep_sub_, deep_radar_sub_, gt_subscriber_;
+ros::Subscriber info_sub_,radar_pose_sub_,radar_pose_sub_2_,leg_pose_sub_,variance_sub_,variance_sub_2,variance_deep_sub_,variance_deep_sub_2,deep_radar_sub_2_,deep_radar_sub_, gt_subscriber_;
 
 
 std::vector<std::vector<float> > rad;
@@ -299,17 +299,23 @@ void infoCallback(const sensor_msgs::CameraInfoPtr& msg){
 void radarPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg)
 {
   if (msg->poses.size() == 0) return;
-  rad.clear();
- 	for(unsigned int i = 0;i<msg->poses.size();i++)
-    {
-      vector<float> ps(3,0);
-      ps[0]=msg->poses[i].position.x;
-      ps[1]=msg->poses[i].position.y;
-      ps[2]=msg->poses[i].position.z;
-      rad.push_back(ps);
-    }
-
+  vector<float> ps(3,0);
+  ps[0]=msg->poses[0].position.x;
+  ps[1]=msg->poses[0].position.y;
+  ps[2]=msg->poses[0].position.z;
+  rad.at(0) = ps;
 }
+
+void radarPoseCallback2(const geometry_msgs::PoseArrayConstPtr& msg)
+{
+  if (msg->poses.size() == 0) return;
+  vector<float> ps(3,0);
+  ps[0]=msg->poses[0].position.x;
+  ps[1]=msg->poses[0].position.y;
+  ps[2]=msg->poses[0].position.z;
+  rad.at(1) = ps;
+}
+
 
 void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
   if (msg->people.size() == 0) return;
@@ -329,33 +335,56 @@ void legPoseCallback(const people_msgs::PositionMeasurementArrayConstPtr& msg){
 
 void deepPoseCallback(const geometry_msgs::PoseArrayConstPtr& msg){
   if (msg->poses.size() == 0) return;
-  deep.clear();
- 	for(unsigned int i = 0;i<msg->poses.size();i++)
-    {
-      vector<float> ps(3,0);
-      ps[0]=msg->poses[i].position.x;
-      ps[1]=msg->poses[i].position.y;
-      ps[2]=msg->poses[i].position.z;
-      deep.push_back(ps);
-    }
+  vector<float> ps(3,0);
+  ps[0]=msg->poses[0].position.x;
+  ps[1]=msg->poses[0].position.y;
+  ps[2]=msg->poses[0].position.z;
+  deep.at(0) = ps;
+}
 
+void deepPoseCallback2(const geometry_msgs::PoseArrayConstPtr& msg){
+  if (msg->poses.size() == 0) return;
+  vector<float> ps(3,0);
+  ps[0]=msg->poses[0].position.x;
+  ps[1]=msg->poses[0].position.y;
+  ps[2]=msg->poses[0].position.z;
+  deep.at(1) = ps;
 }
 
 void varianceCallback(const geometry_msgs::PoseArrayConstPtr& msg){
-  ccovR.clear();
+  //ccovR.clear();
   for(unsigned int i = 0;i<msg->poses.size();i++)
     {
-      ccovR.push_back(msg->poses[i].position.x);
+      ccovR.at(0)=msg->poses[i].position.x;
     }
 }
 
-void varianceDeepCallback(const geometry_msgs::PoseArrayConstPtr& msg){
-  ccovD.clear();
+void varianceCallback2(const geometry_msgs::PoseArrayConstPtr& msg){
+  //ccovR.clear();
   for(unsigned int i = 0;i<msg->poses.size();i++)
     {
-      ccovD.push_back(msg->poses[i].position.x);
+      ccovR.at(1)=msg->poses[i].position.x;
     }
 }
+
+
+void varianceDeepCallback(const geometry_msgs::PoseArrayConstPtr& msg){
+  //ccovD.clear();
+  for(unsigned int i = 0;i<msg->poses.size();i++)
+    {
+      ccovD.at(0)=msg->poses[i].position.x;
+    }
+}
+
+void varianceDeepCallback2(const geometry_msgs::PoseArrayConstPtr& msg){
+  //ccovD.clear();
+  for(unsigned int i = 0;i<msg->poses.size();i++)
+    {
+      ccovD.at(1)=msg->poses[i].position.x;
+    }
+}
+
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "evaluator");
@@ -372,7 +401,12 @@ int main(int argc, char **argv)
   cam.push_back(ps);
   deep.push_back(ps);
   rad.push_back(ps);
+  deep.push_back(ps);
+  rad.push_back(ps);
   float a = 0.1;
+  ccovR.push_back(a);
+  ccovD.push_back(a);
+  ccovL.push_back(a);
   ccovR.push_back(a);
   ccovD.push_back(a);
   ccovL.push_back(a);
@@ -383,16 +417,16 @@ int main(int argc, char **argv)
   variance_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm1/trajectory_acc",3,varianceCallback);
   variance_deep_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn1/trajectory_acc",3,varianceDeepCallback);
 
+  variance_sub_2 = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/svm2/trajectory_acc",3,varianceCallback2);
+  variance_deep_sub_2 = nh_.subscribe<geometry_msgs::PoseArray>("people_tracker/cnn2/trajectory_acc",3,varianceDeepCallback2);
 
-    if(single  == "true")
-    {
+
 	    radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm1",3,radarPoseCallback);
         deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn1",3, deepPoseCallback);
-    }
-    else if(single == "false")
+    if(single == "false")
     {
-        radar_pose_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm2",3,radarPoseCallback);
-        deep_radar_sub_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn2",3, deepPoseCallback);
+        radar_pose_sub_2_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/svm2",3,radarPoseCallback2);
+        deep_radar_sub_2_ = nh_.subscribe<geometry_msgs::PoseArray>("/pt/cnn2",3, deepPoseCallback2);
     }
 
 	depth_pub_  = it_.advertise("/person/depth/image_rect_raw", 1);

@@ -15,7 +15,7 @@ def callback(msg):
 
     out = PoseArray()
     out.header.frame_id = "base_radar_link"
-    out.header.stamp = rospy.Time.now()
+    out.header.stamp = msg.header.stamp
     out.poses = []
 
     if len(msg.poses) == 0:

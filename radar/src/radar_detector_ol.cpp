@@ -47,6 +47,7 @@ private:
   ros::Publisher  pose_array_pub_;
   ros::Publisher  marker_array_pub_;
   ros::Publisher  training_status_pub_;
+  ros::Publisher prob_publisher_;
   /*** Parameters ***/
   bool print_fps_;
   std::string frame_id_;
@@ -96,6 +97,7 @@ Object3dDetector::Object3dDetector() {
   ros::NodeHandle private_nh("~");
   pose_array_pub_     = private_nh.advertise<geometry_msgs::PoseArray>("poses", 1);
   marker_array_pub_   = private_nh.advertise<visualization_msgs::MarkerArray>("markers", 1);
+  prob_publisher_   = private_nh.advertise<visualization_msgs::Marker>("markers_prob", 1);
   training_status_pub_ = private_nh.advertise<std_msgs::Bool>("training_status",1);
  
   /*** Parameters ***/
@@ -461,7 +463,8 @@ void Object3dDetector::saveFeature(Feature &f, struct svm_node *x) {
 void Object3dDetector::classify(int type) {
   geometry_msgs::PoseArray pose_array;
   visualization_msgs::MarkerArray marker_array;
-  
+
+  visualization_msgs::Marker marker_prob;
   for(std::vector<Feature>::iterator it = features_.begin(); it != features_.end(); it++) {
 	  bool svm_find_human = false;
 
@@ -492,8 +495,13 @@ void Object3dDetector::classify(int type) {
 			  if(svm_check_probability_model(svm_model_)) {
 				  double prob_estimates[svm_model_->nr_class];
 				  svm_predict_probability(svm_model_, svm_node_, prob_estimates);
-				  clusters_probability_.push_back(prob_estimates[0]);
-				  if(prob_estimates[0] > human_probability_) {
+				  clusters_probability_.push_back(prob_estimates[1]);
+          geometry_msgs::Point point;
+          point.x = it->centroid[0];
+          point.y = it->centroid[1];
+          point.z = prob_estimates[1];
+          marker_prob.points.push_back(point);
+				  if(prob_estimates[1] > human_probability_) {
 					  svm_find_human = true;
 				  }
 			  } else {
@@ -502,6 +510,19 @@ void Object3dDetector::classify(int type) {
 			  }
 		  }
 	  }
+    marker_prob.scale.x = 0.1;
+    marker_prob.scale.y = 0.1;
+    marker_prob.scale.z = 0.1;
+    marker_prob.color.a = 1.0;
+    marker_prob.color.r = 0.0;
+    marker_prob.color.g = 0.0;
+    marker_prob.color.b = 1.0;
+	  marker_prob.header.stamp = ros::Time::now();
+	  marker_prob.header.frame_id = "base_radar_link";
+	  marker_prob.id = 7;
+    marker_prob.type = 7;
+
+      prob_publisher_.publish(marker_prob);
 
 	  /*** cluster pose ***/
 	  geometry_msgs::Pose pose;

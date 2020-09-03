@@ -12,6 +12,7 @@ import threading
 
 import numpy as np
 import tf as rostf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from numpy.random import seed
 
@@ -26,6 +27,7 @@ import laser_geometry.laser_geometry as lg
 from visualization_msgs import msg as msgTemplate
 from people_msgs.msg import PositionMeasurementArray
 from geometry_msgs.msg import Point
+from geometry_msgs.msg import PointStamped
 from sensor_msgs.msg import PointCloud2
 
 tf.random.set_random_seed(seed=1)
@@ -33,7 +35,7 @@ tf.random.set_random_seed(seed=1)
 tfListener = None
 legDetectorBuffers = []
 legDetectorFrame = None
-maxTimeSinceLaser = rospy.Duration(0, 250000000) #secs, nanosecs
+maxTimeSinceLaser = rospy.Duration(0, 330000000) #secs, nanosecs
 maxDistanceToObj = 0.5
 radarFlags = [True, True, True, True, True, True] #xyz, intensity, range, doppler
 pointnetQueue = Queue.Queue()
@@ -42,6 +44,7 @@ pointsAllowedToDuplicate = 6
 biasX, biasY = 0.0, 0.0
 biasBufferX, biasBufferY = [], []
 biasCount = 25
+trainingPointsPublisher = None
 
 def legDetectorCallback(msg):
 	global legDetectorBuffers, legDetectorFrame
@@ -54,8 +57,8 @@ def legDetectorCallback(msg):
 	legDetectorBuffers[msg.id] = msg
 
 def radarCallback(msg):
-	global legDetectorBuffers, legDetectorFrame, tfListener, pointnetQueue, maxNumPoints, biasX, biasY, biasCount, biasBufferY, biasBufferX
-	
+	global legDetectorBuffers, legDetectorFrame, tfListener, pointnetQueue, maxNumPoints, biasX, biasY, biasCount, biasBufferY, biasBufferX, trainingPointsPublisher
+
 	trainable = True
 
 	if legDetectorFrame == None or len(legDetectorBuffers) == 0:
@@ -70,18 +73,6 @@ def radarCallback(msg):
 		return True
 	usedlegDetectorBufs = filter(filterOld, legDetectorBuffers)
 
-	#get transform from leg to radar
-	transform = None
-	try:
-		transform = tfListener.lookupTransform(msg.header.frame_id, legDetectorFrame, rospy.Time(0))
-	except:
-		print("Aborting, unable to get tf transformation")
-		return
-
-	trans_mat = rostf.transformations.translation_matrix(transform[0])
-	rot_mat = rostf.transformations.quaternion_matrix(transform[1])
-	mat = np.dot(trans_mat, rot_mat)
-
 	points = []
 	labels = []
 
@@ -91,14 +82,13 @@ def radarCallback(msg):
 	minX, minY, minZ = 0, 0, 0
 	maxX, maxY, maxZ = 0, 0, 0
 
+        posExamples = []
+        negExamples = []
+
 	point_generator = pc2.read_points(msg)
 	for point in point_generator:
 
 		isObject = False
-
-		transformedPoint = np.append(point[0:3], 1.0)
-		transformedPoint = np.dot(mat, transformedPoint)
-		point = np.append(transformedPoint[0:3], point[3:])
 
 		now = rospy.get_rostime()
 
@@ -137,11 +127,74 @@ def radarCallback(msg):
 
 		if isObject:
 			labels.append(1)
+                        posExamples.append([x, y, z])
 		else:
 			labels.append(0)
+                        negExamples.append([x, y, z])
 
 	if nInCluster == 0:
 		trainable = False
+
+	tmsg = msgTemplate.Marker()
+        tmsg.header = msg.header
+
+	tmsg.ns = "points-pos"
+	tmsg.id = 0
+	tmsg.type = 7
+	tmsg.action = 0
+
+	tmsg.scale.x = 0.15
+	tmsg.scale.y = 0.15
+	tmsg.scale.z = 0.15
+
+	tmsg.color.a = 1.0
+        tmsg.color.r = 1.0
+	tmsg.color.g = 0.0
+	tmsg.color.b = 1.0
+
+	tmsg.lifetime = rospy.Duration.from_sec(1)
+
+        tmsg.points = []
+	for j in posExamples:
+		tmsg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+
+	trainingPointsPublisher.publish(tmsg)
+
+        tmsg.ns = "points-neg"
+	tmsg.id = 1
+        tmsg.color.r = 1.0
+	tmsg.color.g = 1.0
+	tmsg.color.b = 0.0
+
+	tmsg.scale.x = 0.2
+	tmsg.scale.y = 0.2
+	tmsg.scale.z = 0.2
+
+        tmsg.points = []
+	for j in negExamples:
+		tmsg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+
+	trainingPointsPublisher.publish(tmsg)
+
+        tmsg.ns = "points-centre"
+	tmsg.id = 1
+        tmsg.color.r = 0.0
+	tmsg.color.g = 0.0
+	tmsg.color.b = 0.0
+
+	tmsg.scale.x = 0.4
+	tmsg.scale.y = 0.4
+	tmsg.scale.z = 0.4
+
+        tmsg.points = []
+	for obj in usedlegDetectorBufs:
+		if obj is None or now - maxTimeSinceLaser > obj.header.stamp:
+			continue
+	        tmsg.points.append(Point(x = obj.pose.position.x, y = obj.pose.position.y, z = obj.pose.position.z))
+
+	trainingPointsPublisher.publish(tmsg)
+
+
 
 	#calculate normalised values
 	sceneSizeX = maxX - minX
@@ -179,7 +232,7 @@ def radarCallback(msg):
 			points.append(points[idx % len(points)])
 			labels.append(labels[idx % len(labels)])
 			idx += 1
-		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable))
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp, msg.header.frame_id))
 
 	elif len(points) < maxNumPoints:
 
@@ -193,10 +246,10 @@ def radarCallback(msg):
 			points.append(orderedFeatures[idx][0])
 			labels.append(orderedFeatures[idx][1])
 			idx += 1
-		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable))
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp, msg.header.frame_id))
 
 	elif len(points) == maxNumPoints:
-		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable))
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp, msg.header.frame_id))
 
 	elif len(points) > maxNumPoints:
 		while len(points) > maxNumPoints:
@@ -222,13 +275,14 @@ def radarCallback(msg):
 
 			del points[lowestIntensity]
 			del labels[lowestIntensity]
-		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable))
+		pointnetQueue.put((np.array(points[:]), np.array(labels[:]), trainable, msg.header.stamp, msg.header.frame_id))
 
 class PointnetThread(threading.Thread):
-	def __init__(self, queue, publisher, nPoints):
+	def __init__(self, queue, publisher, nPoints, rawPublisher):
 		threading.Thread.__init__(self)
 		self.queue = queue
 		self.publisher = publisher
+		self.rawpublisher = rawPublisher
 		self.pointBuffer = []
 		self.labelBuffer = []
 		self.frameNumber = 0
@@ -392,12 +446,7 @@ class PointnetThread(threading.Thread):
 
 			#publish
 			self.publish(preds, msg)
-
-	def probMax(self, x):
-	        if x == 1:
-	                return 1
-	        else:
-	                return x + self.probMax(x - 1)
+			self.rawpublish(preds, msg)
 
 	def getBatches(self):
 
@@ -469,34 +518,67 @@ class PointnetThread(threading.Thread):
 
 		return pred_val
 
-	# def infer(self, msg):
+        def rawpublish(self, points, originalMsg):
+                
 
-		# print("Running inference")
 
-		# current_data = np.array(msg[0] * self.batchSize)
-		# # current_label = np.array(msg[1] * self.batchSize)
 
-		# file_size = current_data.shape[0]
-		# num_batches = file_size
 
-		# print(current_label)
 
-		# feed_dict = {self.ops['pointclouds_pl']: current_data[0:self.batchSize, :, :],
-		# 	self.ops['labels_pl']: current_label[0:self.batchSize],
-		# 	self.ops['is_training_pl']: True}
 
-		# summary, step, _, loss_val, pred_val = self.sess.run([self.ops['merged'], self.ops['step'], self.ops['train_op'], self.ops['loss'], self.ops['pred']],
-		# 	feed_dict=feed_dict)
 
-		# inputPoints = msg[0]
-		# labels = msg[1]
 
-		# feed_dict = {self.pointclouds_pl: inputPoints,
-		# 			 self.labels_pl: labels,
-		# 			 self.is_training_pl: False}
-		# lossf, predsf = self.sess.run([self.loss, self.pred_softmax], feed_dict=feed_dict)
+		points = points[-1]
+		points = points[:, :self.nClasses]
 
-		# return (lossf, predsf)
+		classPoints = []
+		for i in range(self.nClasses):
+			classPoints.append([])
+
+		for i in range(0, len(points)):
+			p = points[i]
+			pos = originalMsg[0]
+
+			if p[1] > self.threshold:
+				classPoints[1].append([pos[i][0], pos[i][1], pos[i][2], p[1]])
+			else:
+				classPoints[0].append([pos[i][0], pos[i][1], pos[i][2], p[1]])
+
+
+		#publish points
+		msg = msgTemplate.Marker()
+
+		msg.header.frame_id = originalMsg[4]
+		msg.header.stamp = originalMsg[3]
+
+		msg.ns = "points"
+		msg.id = i
+		msg.type = 7
+		msg.action = 0
+
+		msg.scale.x = 0.1
+		msg.scale.y = 0.1
+		msg.scale.z = 0.1
+
+		msg.color.a = 1.0
+                msg.color.r = 0.0
+		msg.color.g = 0.0
+		msg.color.b = 1.0
+
+		msg.lifetime = rospy.Duration.from_sec(1)
+
+                msg.points = []
+                for i in range(0, 2):
+		        for j in classPoints[i]:
+			        msg.points.append(Point(x = j[0], y = j[1], z = j[3]))
+
+		self.rawpublisher.publish(msg)
+
+
+
+
+
+
 
 	def publish(self, points, originalMsg):
 
@@ -531,8 +613,8 @@ class PointnetThread(threading.Thread):
 
 			msg = msgTemplate.Marker()
 
-			msg.header.frame_id = "base_radar_link";
-			msg.header.stamp = rospy.Time.now();
+			msg.header.frame_id = originalMsg[4]
+			msg.header.stamp = originalMsg[3]
 
 			msg.ns = "points"
 			msg.id = i
@@ -566,9 +648,12 @@ class PointnetThread(threading.Thread):
 
 			msg.points = []
 			for j in classPoints[i]:
+                                #filter sensor echos
+                                if (j[0]**2 + j[1] ** 2 ) ** 0.5 < 0.3:
+                                    continue
 				# msg.points.append(Point(x = j[0] + biasX, y = j[1] + biasY, z = j[2]))
-				# msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
 				msg.points.append(Point(x = j[0], y = j[1], z = j[2]))
+				#msg.points.append(Point(x = j[0] - biasX, y = j[1] - biasY, z = j[2]))
 
 			self.publisher.publish(msg)
 
@@ -589,10 +674,13 @@ if __name__ == '__main__':
 	rospy.Subscriber("/visualization_marker", msgTemplate.Marker, legDetectorCallback)
 
 	pointsPublisher = rospy.Publisher('/deep_radar/out/points', msgTemplate.Marker, queue_size=0)
+	trainingPointsPublisher = rospy.Publisher('/deep_radar/training', msgTemplate.Marker, queue_size=0)
+	rawPublisher = rospy.Publisher('/deep_radar/out/points_raw', msgTemplate.Marker, queue_size=0)
 
-	pointnetThread = PointnetThread(pointnetQueue, pointsPublisher, maxNumPoints)
+	pointnetThread = PointnetThread(pointnetQueue, pointsPublisher, maxNumPoints, rawPublisher)
 	pointnetThread.start()
 
+        sys.stderr.write("Deep-radar Ready.")
 	rospy.spin()
 
 	pointnetQueue.put("quit")
