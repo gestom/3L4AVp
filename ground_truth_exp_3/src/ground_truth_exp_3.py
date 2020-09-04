@@ -31,11 +31,14 @@ print(person_ , path_)
 tfBuffer = tf2_ros.Buffer()
 listener = tf2_ros.TransformListener(tfBuffer)
 
-
-try:
-    trans = tfBuffer.lookup_transform('map', 'camera_depth_optical_frame', rospy.Time(),rospy.Duration(1))
-except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-    print("bullshit happend")
+trans = None
+while trans == None:
+    try:
+        trans = tfBuffer.lookup_transform('map', 'camera_depth_optical_frame', rospy.Time(),rospy.Duration(1))
+    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+        print("waiting for trans")
+    import time
+    time.sleep(0.01)
 
 coords = []
 with open(path_, "r") as f:
