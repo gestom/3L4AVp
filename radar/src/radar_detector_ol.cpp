@@ -463,7 +463,7 @@ void Object3dDetector::saveFeature(Feature &f, struct svm_node *x) {
 void Object3dDetector::classify(int type) {
   geometry_msgs::PoseArray pose_array;
   visualization_msgs::MarkerArray marker_array;
-
+  int find_type = 1;
   visualization_msgs::Marker marker_prob;
   for(std::vector<Feature>::iterator it = features_.begin(); it != features_.end(); it++) {
 	  bool svm_find_human = false;
@@ -471,10 +471,9 @@ void Object3dDetector::classify(int type) {
 	  if(type == 1)
 	  {
 		  svm_find_human = true;
-	  }
-	  else
-	  {
-
+      find_type = 0;
+    }
+    else{
 		  if(train_round_ > 0) {
 			  /*** scale data ***/
 			  saveFeature(*it, svm_node_);
@@ -495,20 +494,22 @@ void Object3dDetector::classify(int type) {
 			  if(svm_check_probability_model(svm_model_)) {
 				  double prob_estimates[svm_model_->nr_class];
 				  svm_predict_probability(svm_model_, svm_node_, prob_estimates);
-				  clusters_probability_.push_back(prob_estimates[1]);
+				  clusters_probability_.push_back(prob_estimates[0]);
           geometry_msgs::Point point;
           point.x = it->centroid[0];
           point.y = it->centroid[1];
-          point.z = prob_estimates[1];
+          point.z = prob_estimates[0];
           marker_prob.points.push_back(point);
-				  if(prob_estimates[1] > human_probability_) {
+				  if(prob_estimates[0] > human_probability_) {
 					  svm_find_human = true;
+            find_type = 0;
 				  }
 			  } else {
 				  if(svm_predict(svm_model_, svm_node_) == 1)
 					  svm_find_human = true;
-			  }
-		  }
+            find_type = 0;
+        }
+      }
 	  }
     marker_prob.scale.x = 0.1;
     marker_prob.scale.y = 0.1;
@@ -518,11 +519,11 @@ void Object3dDetector::classify(int type) {
     marker_prob.color.g = 0.0;
     marker_prob.color.b = 1.0;
 	  marker_prob.header.stamp = ros::Time::now();
-	  marker_prob.header.frame_id = "base_radar_link";
+	  marker_prob.header.frame_id = "map";
 	  marker_prob.id = 7;
     marker_prob.type = 7;
 
-      prob_publisher_.publish(marker_prob);
+    prob_publisher_.publish(marker_prob);
 
 	  /*** cluster pose ***/
 	  geometry_msgs::Pose pose;
@@ -568,20 +569,15 @@ void Object3dDetector::classify(int type) {
 	  }
 	  marker.scale.x = 0.02;
 	  marker.color.a = 1.0;
-	  if(svm_find_human) {
-		  marker.color.r = 0.0;
+	  if(svm_find_human || true) {
+		  marker.color.r = find_type;
 		  marker.color.g = 1.0;
 		  marker.color.b = 0.5;
 		  marker.lifetime = ros::Duration(0.1);
-		  pose_array.poses.push_back(pose);
 		  marker_array.markers.push_back(marker);
-	  } else {
-		  marker.color.r = 0.0;
-		  marker.color.g = 0.5;
-		  marker.color.b = 1.0;
-		  marker.lifetime = ros::Duration(0.1);
-		  //marker_array.markers.push_back(marker);
-
+	  }
+    if(svm_find_human) {
+      pose_array.poses.push_back(pose);
 	  }
   }
   
@@ -716,6 +712,7 @@ void Object3dDetector::loadFromFile()
 		is >> svm_problem_.y[ctr];
 
 		if(svm_problem_.y[ctr] == 1)
+
 			positive_++;
 		else
 			negative_++;

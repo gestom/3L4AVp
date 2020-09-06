@@ -136,13 +136,10 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 	cec.segment (*clusters);
 	//std::cerr << ">> Done: " << tt.toc () << " ms\n";
 	//printf("Clusters size: %i: ",clusters->size());
-	pcl_msg_unk->header.frame_id = "map";
-	pcl_msg_unk->height = 1;
-	pcl_msg_unk->width = 0;
-	pcl_msg_unk->points.clear();
 
-	currentT = ros::Time::now();
+	currentT =  ros::Time::now();
 	int positives = 0;
+  int unknowns = 0;
 	for (int i = 0; i < clusters->size (); ++i)
 	{
 		//cout <<  "Cluster size from radar "  << clusters->size() << endl;
@@ -180,18 +177,27 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 		pcl_msg->height = 1;
 		pcl_msg->width = 0;
 		pcl_msg->points.clear();
+    pcl_msg_unk->header.frame_id = "map";
+    pcl_msg_unk->height = 1;
+    pcl_msg_unk->width = 0;
+    pcl_msg_unk->points.clear();
+
+
 		for (int j = 0; j <(int)((*clusters)[i]).indices.size(); ++j){
 			pcl_msg->points.push_back (pcl_pc->points[(*clusters)[i].indices[j]]);
 			pcl_msg->width++;
 		}
-		if((lifeLong <10) ||((currentT-legT)>ros::Duration(1.0))){
+		if((lifeLong < 10) || ((currentT-legT)>ros::Duration(1.0))){
 			for (int j = 0; j <(int)((*clusters)[i]).indices.size(); ++j){
 				pcl_msg_unk->points.push_back (pcl_pc->points[(*clusters)[i].indices[j]]);
 				pcl_msg_unk->width++;
+        unknowns++;
 			}
       std::cout<<lifeLong<<std::endl;
       std::cout<<currentT<<std::endl;
       std::cout<<legT<<std::endl;
+      point_unknown_pub_.publish(pcl_msg_unk);
+      fprintf(stdout,"Publishing unknown\n");
     }else{
 			if (sqrt((meanX-personX)*(meanX-personX)+(meanY-personY)*(meanY-personY)) > personDistance)
 			{
@@ -203,12 +209,14 @@ void allRadarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 				addBoundingBoxMarker(markerArray,minX,maxX,minY,maxY,minZ,maxZ);
 			}
 		}
-
 	}
-	
-	if(pcl_msg_unk->points.size()){
-	point_unknown_pub_.publish(pcl_msg_unk);
-	fprintf(stdout,"Publishing unknown\n");
+  std::cout<<lifeLong<<std::endl;
+  std::cout<<currentT<<std::endl;
+  std::cout<<legT<<std::endl;
+  std::cout<<unknowns<<std::endl;
+
+	if(unknowns){
+
 	}
 	//printf("\n Positives: %i\n",positives);
 	marker_array_pub_.publish(markerArray);
@@ -227,9 +235,9 @@ void trackerCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 	for(unsigned int i = 0;i<msg->people.size();i++)
 	{
 	//	printf("%f %f ",msg->people[i].pos.x,msg->people[i].pos.y);
-		personX = msg->people[0].pos.x;
-		personY = msg->people[0].pos.y;
-		legT = msg->people[0].header.stamp;
+		personX = msg->people[i].pos.x;
+		personY = msg->people[i].pos.y;
+		legT =  ros::Time::now();
 		lifeLong++;
 	}
 	//printf("\n");
