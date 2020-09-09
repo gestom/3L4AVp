@@ -25,7 +25,7 @@ void outlierFilter(vector<float> *x, vector<float> *y)
 		ly = (*y)[i];
 		dx = (*x)[i]-(*x)[i-1];
 		dy = (*y)[i]-(*y)[i-1];
-		if (sqrt(dx*dx+dy*dy) > 1.5 && trk < 15)
+		if (sqrt(dx*dx+dy*dy) > 1.0 && trk < 15)
 		{
 			(*x)[i] = (*x)[i-1]; 
 			(*y)[i] = (*y)[i-1];
@@ -179,8 +179,8 @@ int main(int argc,char* argv[])
 	outlierFilter(&lasTX,&lasTY);
 
 	/*perform transformations*/
-	transformRot(camX,camY,lasTX,lasTY,&lasX,&lasY,1);
-	transformRot(camX,camY,radTX,radTY,&radX,&radY,1);
+	transformRot(camX,camY,lasTX,lasTY,&lasX,&lasY,0);
+	transformRot(camX,camY,radTX,radTY,&radX,&radY,0);
 	
 	float wr,wl,radD,lasD,kfD,sfD,lasF,radF,kfF,sfF;
 	float kfX[100000];
@@ -196,14 +196,6 @@ int main(int argc,char* argv[])
 	int randi = 0;
 	for (int i = 0;i<camX.size();i++)
 	{
-		if (i > atoi(argv[3])){
-			lasX[i] = lastLasX;
-			lasY[i] = lastLasY;
-		}	
-		if (i == atoi(argv[3]) && i==0) {
-			radD=lasD=sfD=kfD=0;
-			datSize = 0;	
-		}
 		datSize++;	
 		if (radX[i] == lastRadX && radY[i] == lastRadY) numRad++; else numRad = 0; 
 		if (lasX[i] == lastLasX && lasY[i] == lastLasY) numLas++; else numLas = 0;
@@ -212,8 +204,8 @@ int main(int argc,char* argv[])
 		lastRadY = radY[i];
 		lastLasX = lasX[i];
 		lastLasY = lasY[i];
-		lasC[i] = 1;//lasC[i];
-		radC[i] = 1;//radC[i];
+		lasC[i] = 1/lasC[i];
+		radC[i] = 1/radC[i];
 
 		//gradually inflate covariance in case information is obsolete
 		wr = 1/(radC[i]*(pow(2,numRad)));
@@ -237,7 +229,7 @@ int main(int argc,char* argv[])
 		}
 		lasF = radF = sfF = kfF = 0; 
 		int numF = 0;
-		for (int k = max(0,i-atoi(argv[4]));k<i;k++){
+		for (int k = max(0,i-atoi(argv[3]));k<i;k++){
 			float filT = 0.999;
 			lasF += dist(lasX[k],lasY[k],camX[k],camY[k]);
 			radF += dist(radX[k],radY[k],camX[k],camY[k]);

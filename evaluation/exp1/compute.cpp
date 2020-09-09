@@ -25,11 +25,11 @@ void outlierFilter(vector<float> *x, vector<float> *y)
 		ly = (*y)[i];
 		dx = (*x)[i]-(*x)[i-1];
 		dy = (*y)[i]-(*y)[i-1];
-		if (sqrt(dx*dx+dy*dy) > 1.0 && trk < 15)
+		if ((sqrt(dx*dx+dy*dy) > 0.5 && trk < 15) || (*x)[i] < 0.5)
 		{
+			if ((*x)[i] > 0.5) trk++;
 			(*x)[i] = (*x)[i-1]; 
 			(*y)[i] = (*y)[i-1];
-			trk++;
 		}else{
 			trk = 0; 
 		}
@@ -37,7 +37,7 @@ void outlierFilter(vector<float> *x, vector<float> *y)
 	}
 }
 
-float transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<float> y,vector<float> *xt,vector<float> *yt,int inject = 0)
+float transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<float> y,vector<float> *xt,vector<float> *yt,int start,int end,int inject = 0)
 {
 	Mat T(2,3,CV_32FC1);
 	float cxxx = 0;
@@ -52,7 +52,7 @@ float transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<flo
 
 	/*center the values*/
 	cxxx = cxxy =rxxx = rxxy = 0;
-	for (int i = 0;i<xi.size();i++)
+	for (int i = start;i<end;i++)
 	{
 		cxxx += x[i]; 	
 		cxxy += y[i]; 	
@@ -71,7 +71,7 @@ float transformRot(vector<float> xi, vector<float> yi,vector<float> x,vector<flo
 	}
 
 	/*caltulate trf matrix*/
-	for (int i = 0;i<xi.size();i++){
+	for (int i = start;i<end;i++){
 //		if (i == 0 || x[i] != x[i-1]){
 			A.at<float>(i,0)=yi[i]*x[i]-xi[i]*y[i];
 			A.at<float>(i,1)=yi[i]*y[i]+xi[i]*x[i];
@@ -191,8 +191,8 @@ int main(int argc,char* argv[])
 	outlierFilter(&lasTX,&lasTY);
 
 	/*perform transformations*/
-	transformRot(camX,camY,lasTX,lasTY,&lasX,&lasY,3);
-	transformRot(camX,camY,radTX,radTY,&radX,&radY,3);
+	transformRot(camX,camY,lasTX,lasTY,&lasX,&lasY,0,2700,3);
+	transformRot(camX,camY,radTX,radTY,&radX,&radY,0,lasC.size(),3);
 	
 	float wr,wl,radD,lasD,kfD,sfD,lasF,radF,kfF,sfF;
 	float kfX[100000];
@@ -207,14 +207,14 @@ int main(int argc,char* argv[])
 	int datSize = 0;
 	for (int i = 0;i<camX.size();i++)
 	{
-		if (i > atoi(argv[3]) && random()%100 < 995){
+		/*if (i > atoi(argv[3]) && random()%100 < 995){
 		       	lasX[i] = lastLasX;
 			lasY[i] = lastLasY;
 		}	
 		if (i == atoi(argv[3]) && i==0) {
 			radD=lasD=sfD=kfD=0;
 			datSize = 0;	
-		}
+		}*/
 		datSize++;	
 		if (radX[i] == lastRadX && radY[i] == lastRadY) numRad++; else numRad = 0; 
 		if (lasX[i] == lastLasX && lasY[i] == lastLasY) numLas++; else numLas = 0;
@@ -243,7 +243,7 @@ int main(int argc,char* argv[])
 		}
 		lasF = radF = sfF = kfF = 0; 
 		int numF = 0;
-		for (int k = max(0,i-atoi(argv[4]));k<i;k++){
+		for (int k = max(0,i-atoi(argv[3]));k<i;k++){
 			float filT = 0.999;
 			lasF += dist(lasX[k],lasY[k],camX[k],camY[k]);
 			radF += dist(radX[k],radY[k],camX[k],camY[k]);

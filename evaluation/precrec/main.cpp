@@ -46,27 +46,33 @@ int main(int argc,char *argv[])
 		point.y = y; 
 		point.z = 10; 
 		if (n == 0) fifi = thr;
-		point.thr = thr - fifi;
-	        sum += point.thr;	
+		point.thr = thr;// - fifi;
+		sum += point.thr;
 		point.gt = gt; 
 		if (gt == 1) allPositives++;
 		point.clusterID = UNCLASSIFIED; 
 		points.push_back(point);
 		n++;
 	}
+	int falsePositives[100];
+	int falseNegatives[100];
+	int truePositives[100];
+	float threshold[101];
+	for (int i = 0;i<101;i++) threshold[i] = 1.0; 
+	for (int i = 0;i<n;i++) threshold[i] = points[i].thr;///sum*100; 
 	for (int i = 0;i<n;i++){
+		falsePositives[i] = 0;
+		falseNegatives[i] = 0;
+		truePositives[i] = 0;
 		// constructor
 		DBSCAN ds(MINIMUM_POINTS, EPSILON, points);
 
 		// main loop
 		ds.run();
 
-		int falsePositives = 0;
-		int falseNegatives = 0;
-		int truePositives = 0;
 
 		// result of DBSCAN algorithm
-//		printResults(ds.m_points, ds.getTotalPointSize());
+		//printResults(ds.m_points, ds.getTotalPointSize());
 		int clusterPos[50];
 		for (int i = 0;i<50;i++) clusterPos[i] = -1;
 		for (int i = 0;i<ds.getTotalPointSize();i++)
@@ -76,46 +82,30 @@ int main(int argc,char *argv[])
 				if (ds.m_points[i].gt == 0 && clusterPos[ds.m_points[i].clusterID] != 1) clusterPos[ds.m_points[i].clusterID] = 0;
 			}
 		}
-		for (int i = 0;i<50;i++){
-		       if (clusterPos[i] == 0) falsePositives++;	
-		       if (clusterPos[i] == 1) truePositives++;	
+		for (int k = 0;k<50;k++){
+			if (clusterPos[k] == 0) falsePositives[i]++;	
+			if (clusterPos[k] == 1) truePositives[i]++;	
 		}
-		falseNegatives = 1-truePositives;
-		precision[0] = 1;
-		if (truePositives+falsePositives > 0){
-			precision[0] = 1.0*truePositives/(truePositives+falsePositives);
+		falseNegatives[i] = 1-truePositives[i];
+		precision[i] = 1;
+		if (truePositives[i]+falsePositives[i] > 0){
+			precision[i] = 1.0*truePositives[i]/(truePositives[i]+falsePositives[i]);
 		}
-		recall[0] = 1.0*truePositives/(truePositives+falseNegatives);
+		recall[i] = 1.0*truePositives[i]/(truePositives[i]+falseNegatives[i]);
 
 		float avep = 0;
-		printf("%f %f %i %i %i %f\n",precision[0],recall[0],truePositives,falsePositives,falseNegatives,(points[0].thr)/(sum)*100/*,(points[0].thr-fifi)*pow(pads/100.0,4)*40*/);
 		points.erase (points.begin());
 	}
+	for (int i = 0;i<n;i++){
+		printf("%f %f %i %i %i %f\n",precision[i],recall[i],truePositives[i],falsePositives[i],falseNegatives[i],threshold[i]);
+	}
+	int p = 0;
+	threshold[100] = 100;
+	for (float t = 0;t<1.0;t=t+0.001)
+	{
+		p = 0;
+		while (threshold[p] < t) p++;
+		//printf("PR: %i %i %i %i %f %f\n",truePositives[p],falsePositives[p],falseNegatives[p],p,threshold[p],t);
+	}	
 	return 0;
-	/*
-	   float treshold = 0;
-	   int falsePositives = 0;
-	   int falseNegatives = 0;
-	   int truePositives = 0;	
-	   for (int i = 0;i<n;i++)truePositives+=gt[i];
-	   falsePositives = n-truePositives;
-	   for (int i = 0;i<n;i++){
-	   if (gt[i] == 0) falsePositives--;	
-	   if (gt[i] == 1) {falseNegatives++;truePositives--;}
-	   precision[i] = 1.0*truePositives/(truePositives+falsePositives);	
-	   recall[i] = 1.0*truePositives/(truePositives+falseNegatives);
-	   }
-	   float avep = 0;
-	   for (int i = n-2;i>0;i--)
-	   {
-	   for (int j = i;j>0;j--)
-	   {
-	   if (precision[i] < precision[j]) precision[i] = precision[j];
-	   }
-	   if (recall[i] != recall[i-1]){
-	   avep += precision[i]*(recall[i-1]-recall[i]);
-	   }
-	   printf("%f %f %i %i %i %f\n",precision[i],recall[i],truePositives,falsePositives,falseNegatives,avep/recall[i]);
-	   }
-	   return 0;*/
 }
